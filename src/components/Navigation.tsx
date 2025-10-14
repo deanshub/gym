@@ -1,4 +1,10 @@
-import { BarChart3, Calendar, Dumbbell, Settings, Zap } from "lucide-react";
+import {
+	BarChart3,
+	BicepsFlexed,
+	Calendar,
+	Dumbbell,
+	Settings,
+} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
 	NavigationMenu,
@@ -33,9 +39,9 @@ export function Navigation() {
 				<div className="flex justify-between items-center h-16">
 					<Link
 						to="/"
-						className="text-xl font-bold bg-red-400 w-12 h-12 rounded-full flex items-center justify-center min-h-[44px] min-w-[44px] mr-2"
+						className="text-xl font-bold bg-primary w-10 h-10 rounded-full flex items-center justify-center min-h-[44px] min-w-[44px] mr-2"
 					>
-						<Zap size={20} className="text-white" />
+						<BicepsFlexed size={24} className="text-white" />
 					</Link>
 
 					<NavigationMenu className="flex">

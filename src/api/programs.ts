@@ -21,17 +21,17 @@ export const programsRoutes = {
 		},
 	},
 
-	// Get program exercises
+	// Get program details
 	"/programs/:id": {
 		async GET(req: { params: { id: string } }) {
 			const id = req.params.id;
-			const exercises = db
-				.prepare(
-					"SELECT * FROM exercises WHERE program_id = ? ORDER BY created_at",
-				)
-				.all(id);
+			const program = db.prepare("SELECT * FROM programs WHERE id = ?").get(id);
 
-			return Response.json(exercises);
+			if (!program) {
+				return new Response("Program not found", { status: 404 });
+			}
+
+			return Response.json(program);
 		},
 		async PUT(req: {
 			params: { id: string };
@@ -54,8 +54,19 @@ export const programsRoutes = {
 		},
 	},
 
-	// Add exercise to program
+	// Get program exercises
 	"/programs/:id/exercises": {
+		async GET(req: { params: { id: string } }) {
+			const id = req.params.id;
+			const exercises = db
+				.prepare(
+					"SELECT * FROM exercises WHERE program_id = ? ORDER BY created_at",
+				)
+				.all(id);
+
+			return Response.json(exercises);
+		},
+
 		async POST(req: {
 			params: { id: string };
 			json: () => Promise<{

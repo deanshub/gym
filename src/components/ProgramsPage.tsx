@@ -71,7 +71,7 @@ export function ProgramsPage() {
 
 		// Update exercises cache
 		mutate(
-			`/api/programs/${programId}`,
+			`/api/programs/${programId}/exercises`,
 			(currentExercises: Exercise[] = []) => [...currentExercises, newExercise],
 			false,
 		);

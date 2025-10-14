@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 
 function ExercisesList({ programId, onDeleteExercise }: ProgramExercisesProps) {
 	const { data: exercises = [] } = useSWR<Exercise[]>(
-		`/api/programs/${programId}`,
+		`/api/programs/${programId}/exercises`,
 	);
 
 	if (exercises.length === 0) {

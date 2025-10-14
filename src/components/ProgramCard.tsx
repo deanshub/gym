@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function ProgramCard({ program }: ProgramCardProps) {
 	const { data: exercises = [] } = useSWR<Exercise[]>(
-		`/api/programs/${program.id}`,
+		`/api/programs/${program.id}/exercises`,
 	);
 	const hasExercises = exercises.length > 0;
 

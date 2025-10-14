@@ -1,5 +1,5 @@
-import { CheckCircle, Square } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle, ChevronDown, ChevronUp, Square } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
 import type { Exercise, Program, WorkoutSession } from "../types";
@@ -10,7 +10,7 @@ export function ActiveWorkoutPage() {
 	const { programId } = useParams<{ programId: string }>();
 	const { data: program } = useSWR<Program>(`/api/programs/${programId}`);
 	const { data: exercises = [] } = useSWR<Exercise[]>(
-		`/api/programs/${programId}`,
+		`/api/programs/${programId}/exercises`,
 	);
 
 	const [session, setSession] = useState<WorkoutSession>(() => {
@@ -22,6 +22,31 @@ export function ActiveWorkoutPage() {
 			completedExercises: [],
 		};
 	});
+
+	const [currentExerciseValues, setCurrentExerciseValues] = useState({
+		sets: 0,
+		reps: 0,
+		weight: 0,
+	});
+
+	// Update current exercise values when exercise changes
+	useEffect(() => {
+		if (exercises.length > 0) {
+			const currentExercise = exercises[session.currentExerciseIndex];
+			setCurrentExerciseValues({
+				sets: currentExercise.sets,
+				reps: currentExercise.reps,
+				weight: currentExercise.weight,
+			});
+		}
+	}, [exercises, session.currentExerciseIndex]);
+
+	const updateValue = (field: "sets" | "reps" | "weight", delta: number) => {
+		setCurrentExerciseValues((prev) => ({
+			...prev,
+			[field]: Math.max(0, prev[field] + delta),
+		}));
+	};
 
 	const completeExercise = () => {
 		if (!exercises.length) return;
@@ -74,7 +99,7 @@ export function ActiveWorkoutPage() {
 			<div className="flex justify-between items-center mb-4">
 				<h2 className="text-xl font-bold">{program.name}</h2>
 				<Button variant="outline" onClick={stopWorkout}>
-					<Square size={16} />
+					<Square className="!w-8 !h-8" strokeWidth={2} />
 					Stop Workout
 				</Button>
 			</div>
@@ -101,18 +126,77 @@ export function ActiveWorkoutPage() {
 				<CardContent>
 					<div className="grid grid-cols-3 gap-4 text-center mb-6">
 						<div>
-							<div className="text-2xl font-bold">{currentExercise.sets}</div>
-							<div className="text-sm text-gray-600">Sets</div>
-						</div>
-						<div>
-							<div className="text-2xl font-bold">{currentExercise.reps}</div>
-							<div className="text-sm text-gray-600">Reps</div>
-						</div>
-						<div>
-							<div className="text-2xl font-bold">
-								{currentExercise.weight}kg
+							<div className="flex flex-col items-center gap-1">
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => updateValue("sets", 1)}
+									className="h-12 w-full p-0"
+								>
+									<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
+								</Button>
+								<div className="text-2xl font-bold">
+									{currentExerciseValues.sets}
+								</div>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => updateValue("sets", -1)}
+									className="h-12 w-full p-0"
+								>
+									<ChevronDown className="!w-8 !h-8" strokeWidth={2} />
+								</Button>
 							</div>
-							<div className="text-sm text-gray-600">Weight</div>
+							<div className="text-sm text-gray-600 mt-2">Sets</div>
+						</div>
+						<div>
+							<div className="flex flex-col items-center gap-1">
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => updateValue("reps", 1)}
+									className="h-12 w-full p-0"
+								>
+									<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
+								</Button>
+								<div className="text-2xl font-bold">
+									{currentExerciseValues.reps}
+								</div>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => updateValue("reps", -1)}
+									className="h-12 w-full p-0"
+								>
+									<ChevronDown className="!w-8 !h-8" strokeWidth={2} />
+								</Button>
+							</div>
+							<div className="text-sm text-gray-600 mt-2">Reps</div>
+						</div>
+						<div>
+							<div className="flex flex-col items-center gap-1">
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => updateValue("weight", 1)}
+									className="h-12 w-full p-0"
+								>
+									<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
+								</Button>
+								<div className="text-2xl font-bold">
+									{currentExerciseValues.weight}
+									<small className="text-sm font-normal">kg</small>
+								</div>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => updateValue("weight", -1)}
+									className="h-12 w-full p-0"
+								>
+									<ChevronDown className="!w-8 !h-8" strokeWidth={2} />
+								</Button>
+							</div>
+							<div className="text-sm text-gray-600 mt-2">Weight</div>
 						</div>
 					</div>
 					<Button onClick={completeExercise} className="w-full" size="lg">

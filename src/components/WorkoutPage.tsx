@@ -1,7 +1,8 @@
-import { CheckCircle, Play, Square } from "lucide-react";
+import { CheckCircle, Dumbbell, Play, Square } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 import type { Exercise, Program } from "../types/program";
+import { EmptyState } from "./EmptyState";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
@@ -75,6 +76,22 @@ export function WorkoutPage() {
 	};
 
 	if (!session) {
+		if (programs.length === 0) {
+			return (
+				<div className="flex-1 p-4">
+					<EmptyState
+						icon={Dumbbell}
+						title="No Programs Available"
+						description="Create your first workout program to start training"
+						actionLabel="Go to Programs"
+						onAction={() => {
+							window.location.href = "/programs";
+						}}
+					/>
+				</div>
+			);
+		}
+
 		return (
 			<div className="flex-1 p-4">
 				<h2 className="text-xl font-bold mb-4">Start Workout</h2>

@@ -1,7 +1,8 @@
-import { DiamondPlus, Edit, Plus, Trash2 } from "lucide-react";
+import { DiamondPlus, Edit, Plus, Target, Trash2 } from "lucide-react";
 import { useState } from "react";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import type { Exercise, Program } from "../types/program";
+import { EmptyState } from "./EmptyState";
 import { ProgramExercises } from "./ProgramExercises";
 import { ProgramForm } from "./ProgramForm";
 import { Button } from "./ui/button";
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export function ProgramsPage() {
-	const { data: programs = [], mutate } = useSWR<Program[]>("/api/programs");
+	const { data: programs = [] } = useSWR<Program[]>("/api/programs");
 	const [editingProgram, setEditingProgram] = useState<Program | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [dialogMode, setDialogMode] = useState<
@@ -26,7 +27,11 @@ export function ProgramsPage() {
 			body: JSON.stringify({ name }),
 		});
 		const newProgram = await response.json();
-		mutate([...safePrograms, { ...newProgram, exercises: [] }], false);
+		mutate(
+			"/api/programs",
+			[...safePrograms, { ...newProgram, exercises: [] }],
+			false,
+		);
 	};
 
 	const updateProgram = async (updatedProgram: Program) => {
@@ -36,6 +41,7 @@ export function ProgramsPage() {
 			body: JSON.stringify({ name: updatedProgram.name }),
 		});
 		mutate(
+			"/api/programs",
 			safePrograms.map((p) =>
 				p.id === updatedProgram.id ? updatedProgram : p,
 			),
@@ -46,6 +52,7 @@ export function ProgramsPage() {
 	const deleteProgram = async (id: string) => {
 		await fetch(`/api/programs/${id}`, { method: "DELETE" });
 		mutate(
+			"/api/programs",
 			safePrograms.filter((p) => p.id !== id),
 			false,
 		);
@@ -113,14 +120,6 @@ export function ProgramsPage() {
 
 	return (
 		<div className="flex-1 p-4">
-			<div className="flex justify-between items-center mb-4">
-				<h2 className="text-xl font-bold">Programs</h2>
-				<Button onClick={() => openDialog("create")}>
-					<Plus size={16} />
-					Add Program
-				</Button>
-			</div>
-
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 				<DialogContent>
 					<DialogHeader>
@@ -148,46 +147,66 @@ export function ProgramsPage() {
 				</DialogContent>
 			</Dialog>
 
-			<div className="grid gap-4">
-				{safePrograms.map((program) => (
-					<Card key={program.id}>
-						<CardHeader>
-							<div className="flex justify-between items-center">
-								<CardTitle>{program.name}</CardTitle>
-								<div className="flex gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => openDialog("rename", program)}
-									>
-										<Edit size={14} />
-									</Button>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => openDialog("exercises", program)}
-									>
-										<DiamondPlus size={14} />
-									</Button>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => deleteProgram(program.id)}
-									>
-										<Trash2 size={14} />
-									</Button>
-								</div>
-							</div>
-						</CardHeader>
-						<CardContent>
-							<ProgramExercises
-								programId={program.id}
-								onDeleteExercise={deleteExercise}
-							/>
-						</CardContent>
-					</Card>
-				))}
-			</div>
+			{safePrograms.length === 0 ? (
+				<EmptyState
+					icon={Target}
+					title="No Programs Yet"
+					description="Create your first workout program to get started with your fitness journey"
+					actionLabel="Add Program"
+					onAction={() => openDialog("create")}
+				/>
+			) : (
+				<>
+					<div className="flex justify-between items-center mb-4">
+						<h2 className="text-xl font-bold">Programs</h2>
+						<Button onClick={() => openDialog("create")}>
+							<Plus size={16} />
+							Add Program
+						</Button>
+					</div>
+
+					<div className="grid gap-4">
+						{safePrograms.map((program) => (
+							<Card key={program.id}>
+								<CardHeader>
+									<div className="flex justify-between items-center">
+										<CardTitle>{program.name}</CardTitle>
+										<div className="flex gap-2">
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => openDialog("rename", program)}
+											>
+												<Edit size={14} />
+											</Button>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => openDialog("exercises", program)}
+											>
+												<DiamondPlus size={14} />
+											</Button>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => deleteProgram(program.id)}
+											>
+												<Trash2 size={14} />
+											</Button>
+										</div>
+									</div>
+								</CardHeader>
+								<CardContent>
+									<ProgramExercises
+										programId={program.id}
+										onDeleteExercise={deleteExercise}
+									/>
+								</CardContent>
+							</Card>
+						))}
+					</div>
+				</>
+			)}
 		</div>
 	);
 }

@@ -1,5 +1,5 @@
 import { BarChart3, Calendar, Dumbbell, Settings, Zap } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
 	NavigationMenu,
 	NavigationMenuItem,
@@ -8,6 +8,25 @@ import {
 } from "./ui/navigation-menu";
 
 export function Navigation() {
+	const location = useLocation();
+
+	const isActive = (path: string) => {
+		if (path === "/") {
+			return (
+				location.pathname === "/" || location.pathname.startsWith("/workout")
+			);
+		}
+		return location.pathname === path;
+	};
+
+	const getLinkClassName = (path: string) => {
+		const baseClasses = "p-2 min-h-[44px] flex items-center gap-2";
+		const activeClasses = "text-primary font-semibold";
+		const inactiveClasses = "text-gray-700 hover:text-gray-900";
+
+		return `${baseClasses} ${isActive(path) ? activeClasses : inactiveClasses}`;
+	};
+
 	return (
 		<nav className="w-full bg-white shadow-sm border-b">
 			<div className="container mx-auto px-2">
@@ -23,11 +42,8 @@ export function Navigation() {
 						<NavigationMenuList className="flex space-x-4">
 							<NavigationMenuItem>
 								<NavigationMenuLink asChild>
-									<Link
-										to="/"
-										className="p-2 text-gray-700 hover:text-gray-900 min-h-[44px] flex items-center gap-2"
-									>
-										<Dumbbell size={16} />
+									<Link to="/" className={getLinkClassName("/")}>
+										<Dumbbell size={16} fill={isActive("/") ? "currentColor" : "none"} />
 										Workout
 									</Link>
 								</NavigationMenuLink>
@@ -36,9 +52,9 @@ export function Navigation() {
 								<NavigationMenuLink asChild>
 									<Link
 										to="/programs"
-										className="p-2 text-gray-700 hover:text-gray-900 min-h-[44px] flex items-center gap-2"
+										className={getLinkClassName("/programs")}
 									>
-										<Calendar size={16} />
+										<Calendar size={16} fill={isActive("/programs") ? "currentColor" : "none"} />
 										Programs
 									</Link>
 								</NavigationMenuLink>
@@ -47,20 +63,17 @@ export function Navigation() {
 								<NavigationMenuLink asChild>
 									<Link
 										to="/statistics"
-										className="p-2 text-gray-700 hover:text-gray-900 min-h-[44px] flex items-center gap-2"
+										className={getLinkClassName("/statistics")}
 									>
-										<BarChart3 size={16} />
+										<BarChart3 size={16} fill={isActive("/statistics") ? "currentColor" : "none"} />
 										Statistics
 									</Link>
 								</NavigationMenuLink>
 							</NavigationMenuItem>
 							<NavigationMenuItem>
 								<NavigationMenuLink asChild>
-									<Link
-										to="/tools"
-										className="p-2 text-gray-700 hover:text-gray-900 min-h-[44px] flex items-center gap-2"
-									>
-										<Settings size={16} />
+									<Link to="/tools" className={getLinkClassName("/tools")}>
+										<Settings size={16} fill={isActive("/tools") ? "currentColor" : "none"} />
 										Tools
 									</Link>
 								</NavigationMenuLink>

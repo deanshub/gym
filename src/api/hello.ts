@@ -14,7 +14,7 @@ const helloRoutes = {
 		},
 	},
 
-	"/hello/:name": async (req: any) => {
+	"/hello/:name": async (req: { params: { name: string } }) => {
 		const name = req.params.name;
 		return Response.json({
 			message: `Hello, ${name}!`,

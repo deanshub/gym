@@ -23,7 +23,7 @@ export const programsRoutes = {
 
 	// Get program exercises
 	"/programs/:id": {
-		async GET(req: any) {
+		async GET(req: { params: { id: string } }) {
 			const id = req.params.id;
 			const exercises = db
 				.prepare(
@@ -33,7 +33,10 @@ export const programsRoutes = {
 
 			return Response.json(exercises);
 		},
-		async PUT(req: any) {
+		async PUT(req: {
+			params: { id: string };
+			json: () => Promise<{ name: string }>;
+		}) {
 			const { name } = await req.json();
 			const id = req.params.id;
 
@@ -42,7 +45,7 @@ export const programsRoutes = {
 			return Response.json({ success: true });
 		},
 
-		async DELETE(req: any) {
+		async DELETE(req: { params: { id: string } }) {
 			const id = req.params.id;
 
 			db.prepare("DELETE FROM programs WHERE id = ?").run(id);
@@ -53,7 +56,15 @@ export const programsRoutes = {
 
 	// Add exercise to program
 	"/programs/:id/exercises": {
-		async POST(req: any) {
+		async POST(req: {
+			params: { id: string };
+			json: () => Promise<{
+				name: string;
+				sets: number;
+				reps: number;
+				weight: number;
+			}>;
+		}) {
 			const { name, sets, reps, weight } = await req.json();
 			const program_id = req.params.id;
 			const id = Date.now().toString();
@@ -68,7 +79,7 @@ export const programsRoutes = {
 
 	// Delete exercise
 	"/exercises/:id": {
-		async DELETE(req: any) {
+		async DELETE(req: { params: { id: string } }) {
 			const id = req.params.id;
 
 			db.prepare("DELETE FROM exercises WHERE id = ?").run(id);

@@ -4,20 +4,19 @@ import type { Exercise, Program } from "../types/program";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
-interface ProgramWithExercises extends Program {
-	exercises: Exercise[];
-}
-
 interface ProgramCardProps {
 	program: Program;
-	onStartWorkout: (program: ProgramWithExercises) => void;
 }
 
-export function ProgramCard({ program, onStartWorkout }: ProgramCardProps) {
+export function ProgramCard({ program }: ProgramCardProps) {
 	const { data: exercises = [] } = useSWR<Exercise[]>(
 		`/api/programs/${program.id}`,
 	);
 	const hasExercises = exercises.length > 0;
+
+	const startWorkout = () => {
+		window.location.href = `/workout/${program.id}`;
+	};
 
 	return (
 		<Card>
@@ -26,7 +25,7 @@ export function ProgramCard({ program, onStartWorkout }: ProgramCardProps) {
 			</CardHeader>
 			<CardContent>
 				<Button
-					onClick={() => onStartWorkout({ ...program, exercises })}
+					onClick={startWorkout}
 					className="w-full"
 					disabled={!hasExercises}
 				>

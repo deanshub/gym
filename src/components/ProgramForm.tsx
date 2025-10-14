@@ -1,16 +1,8 @@
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
-import type { Exercise, Program } from "../types/program";
+import type { ProgramFormProps } from "../types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-
-interface ProgramFormProps {
-	program: Program | null;
-	mode: "create" | "rename" | "exercises";
-	onSave: (program: Program) => void;
-	onAddExercise: (programId: string, exercise: Omit<Exercise, "id">) => void;
-	onDeleteExercise: (programId: string, exerciseId: string) => void;
-}
 
 export function ProgramForm({
 	program,

@@ -1,7 +1,7 @@
 import { Dumbbell } from "lucide-react";
 import { Suspense } from "react";
 import useSWR from "swr";
-import type { Program } from "../types/program";
+import type { Program } from "../types";
 import { EmptyState } from "./EmptyState";
 import { ProgramCard } from "./ProgramCard";
 import { Button } from "./ui/button";

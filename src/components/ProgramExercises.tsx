@@ -1,13 +1,8 @@
 import { Trash2 } from "lucide-react";
 import { Suspense } from "react";
 import useSWR from "swr";
-import type { Exercise } from "../types/program";
+import type { Exercise, ProgramExercisesProps } from "../types";
 import { Button } from "./ui/button";
-
-interface ProgramExercisesProps {
-	programId: string;
-	onDeleteExercise: (programId: string, exerciseId: string) => void;
-}
 
 function ExercisesList({ programId, onDeleteExercise }: ProgramExercisesProps) {
 	const { data: exercises = [] } = useSWR<Exercise[]>(

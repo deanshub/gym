@@ -1,7 +1,7 @@
 import { DiamondPlus, Edit, Plus, Target, Trash2 } from "lucide-react";
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
-import type { Exercise, Program } from "../types/program";
+import type { Exercise, Program } from "../types";
 import { EmptyState } from "./EmptyState";
 import { ProgramExercises } from "./ProgramExercises";
 import { ProgramForm } from "./ProgramForm";

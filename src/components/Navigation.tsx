@@ -43,7 +43,10 @@ export function Navigation() {
 							<NavigationMenuItem>
 								<NavigationMenuLink asChild>
 									<Link to="/" className={getLinkClassName("/")}>
-										<Dumbbell size={16} fill={isActive("/") ? "currentColor" : "none"} />
+										<Dumbbell
+											size={16}
+											fill={isActive("/") ? "currentColor" : "none"}
+										/>
 										Workout
 									</Link>
 								</NavigationMenuLink>
@@ -54,7 +57,10 @@ export function Navigation() {
 										to="/programs"
 										className={getLinkClassName("/programs")}
 									>
-										<Calendar size={16} fill={isActive("/programs") ? "currentColor" : "none"} />
+										<Calendar
+											size={16}
+											fill={isActive("/programs") ? "currentColor" : "none"}
+										/>
 										Programs
 									</Link>
 								</NavigationMenuLink>
@@ -65,7 +71,10 @@ export function Navigation() {
 										to="/statistics"
 										className={getLinkClassName("/statistics")}
 									>
-										<BarChart3 size={16} fill={isActive("/statistics") ? "currentColor" : "none"} />
+										<BarChart3
+											size={16}
+											fill={isActive("/statistics") ? "currentColor" : "none"}
+										/>
 										Statistics
 									</Link>
 								</NavigationMenuLink>
@@ -73,7 +82,10 @@ export function Navigation() {
 							<NavigationMenuItem>
 								<NavigationMenuLink asChild>
 									<Link to="/tools" className={getLinkClassName("/tools")}>
-										<Settings size={16} fill={isActive("/tools") ? "currentColor" : "none"} />
+										<Settings
+											size={16}
+											fill={isActive("/tools") ? "currentColor" : "none"}
+										/>
 										Tools
 									</Link>
 								</NavigationMenuLink>

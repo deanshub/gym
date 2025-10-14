@@ -1,5 +1,12 @@
 # Project Rules
 
+## TypeScript Guidelines
+
+### Type Definitions
+- **All types must be defined in the global `/src/types.ts` file** - No local interfaces or types in component files
+- Export all types from the global types file
+- Import types using `import type { TypeName } from "../types"`
+
 ## UI/UX Guidelines
 
 ### Icons

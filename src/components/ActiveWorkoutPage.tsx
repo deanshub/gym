@@ -2,20 +2,9 @@ import { CheckCircle, Square } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
-import type { Exercise, Program } from "../types/program";
+import type { Exercise, Program, WorkoutSession } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-
-interface WorkoutSession {
-	currentExerciseIndex: number;
-	startTime: Date;
-	exerciseStartTime: Date | null;
-	completedExercises: Array<{
-		exerciseId: string;
-		startTime: Date;
-		endTime: Date;
-	}>;
-}
 
 export function ActiveWorkoutPage() {
 	const { programId } = useParams<{ programId: string }>();

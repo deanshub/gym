@@ -1,4 +1,4 @@
-import { CheckCircle, ChevronDown, ChevronUp, Square } from "lucide-react";
+import { CheckCircle, ChevronDown, ChevronUp, TimerOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
@@ -22,6 +22,16 @@ export function ActiveWorkoutPage() {
 			completedExercises: [],
 		};
 	});
+
+	const [elapsedTime, setElapsedTime] = useState(0);
+
+	// Timer effect
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setElapsedTime(Math.floor((Date.now() - session.startTime.getTime()) / 1000));
+		}, 1000);
+		return () => clearInterval(interval);
+	}, [session.startTime]);
 
 	const [currentExerciseValues, setCurrentExerciseValues] = useState({
 		sets: 0,
@@ -94,12 +104,19 @@ export function ActiveWorkoutPage() {
 	const progress =
 		((session.currentExerciseIndex + 1) / exercises.length) * 100;
 
+	const formatTime = (seconds: number) => {
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	};
+
 	return (
 		<div className="flex-1 p-4">
 			<div className="flex justify-between items-center mb-4">
 				<h2 className="text-xl font-bold">{program.name}</h2>
+				<div className="text-lg font-mono">{formatTime(elapsedTime)}</div>
 				<Button variant="outline" onClick={stopWorkout}>
-					<Square className="!w-8 !h-8" strokeWidth={2} />
+					<TimerOff />
 					Stop Workout
 				</Button>
 			</div>

@@ -1,5 +1,5 @@
 const helloRoutes = {
-	"/api/hello": {
+	"/hello": {
 		async GET(_req: Request) {
 			return Response.json({
 				message: "Hello, world!",
@@ -14,7 +14,7 @@ const helloRoutes = {
 		},
 	},
 
-	"/api/hello/:name": async (req: any) => {
+	"/hello/:name": async (req: any) => {
 		const name = req.params.name;
 		return Response.json({
 			message: `Hello, ${name}!`,

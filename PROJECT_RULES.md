@@ -46,3 +46,4 @@
 - Minimal code, maximum impact
 - Mobile-responsive by default
 - Use shadcn components when possible
+- Each component should be in its own file

@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database(process.env.DATABASE_URL ?? "app.db");
+const db = new Database(process.env.DATABASE_URL ?? "/data/app.db");
 
 // Initialize database tables
 db.exec(`

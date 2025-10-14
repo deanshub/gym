@@ -1,5 +1,5 @@
-const routes = {
-	"/hello": {
+const helloRoutes = {
+	"/api/hello": {
 		async GET(_req: Request) {
 			return Response.json({
 				message: "Hello, world!",
@@ -14,7 +14,7 @@ const routes = {
 		},
 	},
 
-	"/hello/:name": async (req: Request) => {
+	"/api/hello/:name": async (req: any) => {
 		const name = req.params.name;
 		return Response.json({
 			message: `Hello, ${name}!`,
@@ -22,4 +22,4 @@ const routes = {
 	},
 };
 
-export default routes;
+export default helloRoutes;

@@ -1,4 +1,4 @@
-import { Edit, FileEdit, Plus, Trash2 } from "lucide-react";
+import { DiamondPlus, Edit, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 import type { Exercise, Program } from "../types/program";
@@ -167,7 +167,7 @@ export function ProgramsPage() {
 										size="sm"
 										onClick={() => openDialog("exercises", program)}
 									>
-										<FileEdit size={14} />
+										<DiamondPlus size={14} />
 									</Button>
 									<Button
 										variant="outline"

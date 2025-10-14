@@ -14,6 +14,7 @@
 - No responsive breakpoints - design works at all screen sizes
 
 ### Component Structure
+- **Each component must be in its own file** - No multiple components per file
 - Separate components for different concerns
 - Use SWR for data fetching with suspense
 - Maintain clean state management patterns

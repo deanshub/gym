@@ -1,10 +1,15 @@
-import { CheckCircle, Dumbbell, Play, Square } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle, Dumbbell, Square } from "lucide-react";
+import { Suspense, useState } from "react";
 import useSWR from "swr";
 import type { Exercise, Program } from "../types/program";
 import { EmptyState } from "./EmptyState";
+import { ProgramCard } from "./ProgramCard";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
+interface ProgramWithExercises extends Program {
+	exercises: Exercise[];
+}
 
 interface WorkoutSession {
 	programId: string;
@@ -21,13 +26,10 @@ interface WorkoutSession {
 export function WorkoutPage() {
 	const { data: programs = [] } = useSWR<Program[]>("/api/programs");
 	const [session, setSession] = useState<WorkoutSession | null>(null);
-	const [currentProgram, setCurrentProgram] = useState<Program | null>(null);
+	const [currentProgram, setCurrentProgram] =
+		useState<ProgramWithExercises | null>(null);
 
-	const { data: exercises = [] } = useSWR<Exercise[]>(
-		session ? `/api/programs/${session.programId}` : null,
-	);
-
-	const startWorkout = (program: Program) => {
+	const startWorkout = (program: ProgramWithExercises) => {
 		const now = new Date();
 		setCurrentProgram(program);
 		setSession({
@@ -40,10 +42,11 @@ export function WorkoutPage() {
 	};
 
 	const completeExercise = () => {
-		if (!session || !exercises.length) return;
+		if (!session || !currentProgram?.exercises.length) return;
 
 		const now = new Date();
-		const currentExercise = exercises[session.currentExerciseIndex];
+		const currentExercise =
+			currentProgram.exercises[session.currentExerciseIndex];
 
 		const updatedSession = {
 			...session,
@@ -57,7 +60,7 @@ export function WorkoutPage() {
 			],
 		};
 
-		if (session.currentExerciseIndex < exercises.length - 1) {
+		if (session.currentExerciseIndex < currentProgram.exercises.length - 1) {
 			setSession({
 				...updatedSession,
 				currentExerciseIndex: session.currentExerciseIndex + 1,
@@ -97,27 +100,30 @@ export function WorkoutPage() {
 				<h2 className="text-xl font-bold mb-4">Start Workout</h2>
 				<div className="grid gap-4">
 					{programs.map((program) => (
-						<Card key={program.id}>
-							<CardHeader>
-								<CardTitle>{program.name}</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<Button
-									onClick={() => startWorkout(program)}
-									className="w-full"
-								>
-									<Play size={16} />
-									Start Workout
-								</Button>
-							</CardContent>
-						</Card>
+						<Suspense
+							key={program.id}
+							fallback={
+								<Card>
+									<CardHeader>
+										<CardTitle>{program.name}</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<Button className="w-full" disabled>
+											Loading...
+										</Button>
+									</CardContent>
+								</Card>
+							}
+						>
+							<ProgramCard program={program} onStartWorkout={startWorkout} />
+						</Suspense>
 					))}
 				</div>
 			</div>
 		);
 	}
 
-	if (!exercises.length) {
+	if (!currentProgram?.exercises.length) {
 		return (
 			<div className="flex-1 p-4">
 				<p>Loading exercises...</p>
@@ -125,9 +131,11 @@ export function WorkoutPage() {
 		);
 	}
 
-	const currentExercise = exercises[session.currentExerciseIndex];
+	const currentExercise =
+		currentProgram.exercises[session.currentExerciseIndex];
 	const progress =
-		((session.currentExerciseIndex + 1) / exercises.length) * 100;
+		((session.currentExerciseIndex + 1) / currentProgram.exercises.length) *
+		100;
 
 	return (
 		<div className="flex-1 p-4">
@@ -142,7 +150,8 @@ export function WorkoutPage() {
 			<div className="mb-4">
 				<div className="flex justify-between text-sm text-gray-600 mb-1">
 					<span>
-						Exercise {session.currentExerciseIndex + 1} of {exercises.length}
+						Exercise {session.currentExerciseIndex + 1} of{" "}
+						{currentProgram.exercises.length}
 					</span>
 					<span>{Math.round(progress)}%</span>
 				</div>
@@ -190,7 +199,7 @@ export function WorkoutPage() {
 					<CardContent>
 						<div className="space-y-2">
 							{session.completedExercises.map((completed) => {
-								const exercise = exercises.find(
+								const exercise = currentProgram.exercises.find(
 									(e) => e.id === completed.exerciseId,
 								);
 								const duration = Math.round(

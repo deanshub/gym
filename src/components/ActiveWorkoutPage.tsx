@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { formatMuscleGroup } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { WorkoutCompleted } from "./WorkoutCompleted";
 
 interface WorkoutSession {
 	workoutId: string;
@@ -20,6 +21,8 @@ interface WorkoutSession {
 		reps: number;
 		weight: number;
 	}>;
+	workoutCompleted?: boolean;
+	workoutEndTime?: Date;
 }
 
 export function ActiveWorkoutPage() {
@@ -163,7 +166,12 @@ export function ActiveWorkoutPage() {
 				return;
 			}
 
-			window.location.href = "/";
+			// Set workout as completed
+			setSession({
+				...updatedSession,
+				workoutCompleted: true,
+				workoutEndTime: now,
+			});
 		}
 	};
 
@@ -201,6 +209,15 @@ export function ActiveWorkoutPage() {
 
 	return (
 		<div className="flex-1 p-4">
+			{session.workoutCompleted ? (
+				<WorkoutCompleted
+					program={program}
+					startTime={session.startTime}
+					endTime={session.workoutEndTime!}
+					completedExercises={session.completedExercises}
+				/>
+			) : (
+				<>
 			<div className="flex justify-between items-center mb-4">
 				<h2 className="text-xl font-bold">{program.name}</h2>
 				<div className="text-lg font-mono">{formatTime(elapsedTime)}</div>
@@ -315,38 +332,79 @@ export function ActiveWorkoutPage() {
 				</CardContent>
 			</Card>
 
-			{session.completedExercises.length > 0 && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Completed Exercises</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="space-y-2">
-							{session.completedExercises.map((completed, index) => {
-								const exercise = exercises.find(
-									(e) => e.id === completed.exerciseId,
-								);
-								const duration = Math.round(
-									(completed.endTime.getTime() -
-										completed.startTime.getTime()) /
-										1000,
-								);
-								return (
-									<div
-										key={`${completed.exerciseId}-${index}`}
-										className="flex justify-between items-center p-2 bg-gray-50 rounded"
-									>
-										<span>{exercise?.name}</span>
-										<span className="text-sm text-gray-600">
-											{completed.sets}×{completed.reps} @ {completed.weight}kg (
-											{duration}s)
-										</span>
+			{/* Exercise Timeline */}
+			<Card className="mb-4">
+				<CardHeader>
+					<CardTitle className="text-lg">Progress</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div className="space-y-3">
+						{/* Completed exercises */}
+						{session.completedExercises.map((completed) => {
+							const exercise = exercises.find(
+								(e) => e.id === completed.exerciseId,
+							);
+							const duration = Math.round(
+								(completed.endTime.getTime() - completed.startTime.getTime()) /
+									1000,
+							);
+							return (
+								<div
+									key={`completed-${completed.exerciseId}-${completed.startTime.getTime()}`}
+									className="flex items-center gap-3"
+								>
+									<div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
+									<div className="flex-1 p-2 bg-green-50 rounded border-l-2 border-green-200">
+										<div className="font-medium text-green-800">
+											{exercise?.name}
+										</div>
+										<div className="text-xs text-green-600">
+											{formatMuscleGroup(exercise?.group || "")} •{" "}
+											{completed.sets}×{completed.reps} @ {completed.weight}kg •{" "}
+											{duration}s
+										</div>
 									</div>
-								);
-							})}
+								</div>
+							);
+						})}
+
+						{/* Current exercise */}
+						<div className="flex items-center gap-3">
+							<div className="w-4 h-4 bg-blue-500 rounded-full flex-shrink-0 animate-pulse"></div>
+							<div className="flex-1 p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+								<div className="font-bold text-blue-800">
+									{currentExercise.name}
+								</div>
+								<div className="text-sm text-blue-600">
+									{formatMuscleGroup(currentExercise.group)} • Current Exercise
+								</div>
+							</div>
 						</div>
-					</CardContent>
-				</Card>
+
+						{/* Next exercises */}
+						{exercises
+							.slice(session.currentExerciseIndex + 1)
+							.map((exercise) => (
+								<div
+									key={`next-${exercise.id}`}
+									className="flex items-center gap-3"
+								>
+									<div className="w-2 h-2 bg-gray-300 rounded-full flex-shrink-0"></div>
+									<div className="flex-1 p-2 bg-gray-50 rounded border-l-2 border-gray-200">
+										<div className="font-medium text-gray-700">
+											{exercise.name}
+										</div>
+										<div className="text-xs text-gray-500">
+											{formatMuscleGroup(exercise.group)} • {exercise.sets}×
+											{exercise.reps} @ {exercise.weight}kg
+										</div>
+									</div>
+								</div>
+							))}
+					</div>
+				</CardContent>
+			</Card>
+			</>
 			)}
 		</div>
 	);

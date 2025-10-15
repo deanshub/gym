@@ -1,14 +1,29 @@
 import { prisma } from "../lib/prisma";
 
 export const workoutsRoutes = {
-	// Create workout
+	// Get all workouts
 	"/workouts": {
+		async GET() {
+			const workouts = await prisma.workout.findMany({
+				include: {
+					program: true,
+					exercisePerformances: {
+						include: {
+							exercise: true,
+						},
+					},
+				},
+				orderBy: { startTime: "desc" },
+			});
+			return Response.json(workouts);
+		},
+
 		async POST(req: Request) {
-			const { id, programId, startTime } = await req.json();
+			const { programId, startTime } = await req.json();
 
 			const workout = await prisma.workout.create({
 				data: {
-					id,
+					id: `workout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 					programId,
 					startTime: new Date(startTime),
 				},
@@ -26,6 +41,14 @@ export const workoutsRoutes = {
 		}) {
 			const { endTime } = await req.json();
 			const id = req.params.id;
+
+			// Check if workout exists
+			const existingWorkout = await prisma.workout.findUnique({
+				where: { id },
+			});
+			if (!existingWorkout) {
+				return Response.json({ error: "Workout not found" }, { status: 404 });
+			}
 
 			const workout = await prisma.workout.update({
 				where: { id },

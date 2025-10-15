@@ -68,7 +68,12 @@ export function ActiveWorkoutPage() {
 					programId,
 					startTime: session.startTime.toISOString(),
 				}),
-			});
+			})
+				.then((res) => res.json())
+				.then((workout) => {
+					// Update session with actual workout ID from database
+					setSession((prev) => ({ ...prev, workoutId: workout.id }));
+				});
 		}
 	}, [programId, session.workoutId, session.startTime]);
 
@@ -110,7 +115,7 @@ export function ActiveWorkoutPage() {
 		};
 
 		// Save exercise performance
-		await fetch("/api/exercise-performances", {
+		const response = await fetch("/api/exercise-performances", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -121,6 +126,13 @@ export function ActiveWorkoutPage() {
 				endTime: performance.endTime.toISOString(),
 			}),
 		});
+
+		if (!response.ok) {
+			const error = await response.text();
+			console.error("Failed to save exercise performance:", error);
+			alert(`Failed to save exercise performance: ${error}`);
+			return;
+		}
 
 		const updatedSession = {
 			...session,
@@ -135,13 +147,21 @@ export function ActiveWorkoutPage() {
 			});
 		} else {
 			// Workout complete - update workout end time
-			await fetch(`/api/workouts/${session.workoutId}`, {
+			const response = await fetch(`/api/workouts/${session.workoutId}`, {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					endTime: now.toISOString(),
 				}),
 			});
+
+			if (!response.ok) {
+				const error = await response.text();
+				console.error("Failed to complete workout:", error);
+				alert(`Failed to complete workout: ${error}`);
+				return;
+			}
+
 			window.location.href = "/";
 		}
 	};

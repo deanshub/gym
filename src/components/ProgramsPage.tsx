@@ -1,14 +1,21 @@
 import type { Exercise, Program } from "@prisma/client";
 import { Dumbbell, Edit, Plus, Target, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
 import type { ProgramWithExercises } from "../types";
 import { EmptyState } from "./EmptyState";
 import { ProgramExercises } from "./ProgramExercises";
+import type { ProgramFormRef } from "./ProgramForm";
 import { ProgramForm } from "./ProgramForm";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "./ui/dialog";
 
 export function ProgramsPage() {
 	const { data: programs = [] } = useSWR<Program[]>("/api/programs");
@@ -18,6 +25,9 @@ export function ProgramsPage() {
 	const [dialogMode, setDialogMode] = useState<
 		"create" | "rename" | "exercises"
 	>("create");
+	const [wizardStep, setWizardStep] = useState<1 | 2>(1);
+	const [hasMuscleSelection, setHasMuscleSelection] = useState(false);
+	const formRef = useRef<ProgramFormRef>(null);
 
 	// Ensure programs is always an array
 	const safePrograms = Array.isArray(programs) ? programs : [];
@@ -114,6 +124,8 @@ export function ProgramsPage() {
 		setDialogMode(mode);
 		if (mode === "exercises" && program) {
 			setEditingProgram({ ...program, exercises: [] });
+			setWizardStep(1);
+			setHasMuscleSelection(false);
 		} else {
 			setEditingProgram(program ? { ...program, exercises: [] } : null);
 		}
@@ -132,8 +144,10 @@ export function ProgramsPage() {
 						</DialogTitle>
 					</DialogHeader>
 					<ProgramForm
+						ref={formRef}
 						program={editingProgram}
 						mode={dialogMode}
+						wizardStep={wizardStep}
 						onSave={(program) => {
 							if (dialogMode === "create") {
 								addProgram(program.name);
@@ -143,9 +157,41 @@ export function ProgramsPage() {
 							setIsDialogOpen(false);
 							setEditingProgram(null);
 						}}
-						onAddExercise={addExercise}
-						onDeleteExercise={deleteExercise}
+						onAddExercise={(programId, exercise) => {
+							addExercise(programId, exercise);
+							setWizardStep(1);
+							setHasMuscleSelection(false);
+						}}
+						onMuscleGroupChange={setHasMuscleSelection}
 					/>
+					{dialogMode === "exercises" && (
+						<DialogFooter>
+							{wizardStep === 1 ? (
+								<div className="flex justify-end w-full">
+									<Button
+										onClick={() => setWizardStep(2)}
+										disabled={!hasMuscleSelection}
+									>
+										Next: Exercise Details
+									</Button>
+								</div>
+							) : (
+								<div className="flex justify-between w-full">
+									<Button variant="outline" onClick={() => setWizardStep(1)}>
+										Back
+									</Button>
+									<Button
+										onClick={() => {
+											formRef.current?.submitExercise();
+										}}
+									>
+										<Dumbbell size={16} />
+										Add Exercise
+									</Button>
+								</div>
+							)}
+						</DialogFooter>
+					)}
 				</DialogContent>
 			</Dialog>
 

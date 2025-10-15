@@ -1,3 +1,4 @@
+import type { $Enums } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 
 export const programsRoutes = {
@@ -13,7 +14,7 @@ export const programsRoutes = {
 
 		async POST(req: Request) {
 			const { name } = await req.json();
-			const id = Date.now().toString();
+			const id = `program_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 			const program = await prisma.program.create({
 				data: { id, name },
@@ -87,10 +88,18 @@ export const programsRoutes = {
 		}) {
 			const { name, sets, reps, weight, group } = await req.json();
 			const programId = req.params.id;
-			const id = Date.now().toString();
+			const id = `exercise_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 			const exercise = await prisma.exercise.create({
-				data: { id, programId, name, sets, reps, weight, group },
+				data: {
+					id,
+					programId,
+					name,
+					sets,
+					reps,
+					weight,
+					group: group as $Enums.MuscleGroup,
+				},
 			});
 
 			return Response.json(exercise);

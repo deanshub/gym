@@ -1,8 +1,9 @@
+import type { Exercise, Program } from "@prisma/client";
 import { CheckCircle, ChevronDown, ChevronUp, TimerOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
-import type { Exercise, Program, WorkoutSession } from "../types";
+import type { WorkoutSession } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 

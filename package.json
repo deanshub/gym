@@ -4,16 +4,19 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "bun --hot src/index.tsx",
+		"dev": "bun run prisma:generate && bun --hot src/index.tsx",
 		"start": "NODE_ENV=production bun src/index.tsx",
-		"build": "bun run build.ts",
+		"build": "bun run prisma:generate && bun run build.ts",
 		"test": "vitest --run",
 		"test:ui": "vitest --ui",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
-		"ci": "bun run lint && bun run test && bun run build"
+		"typecheck": "bunx tsc --noEmit",
+		"prisma:generate": "prisma generate",
+		"ci": "bun run prisma:generate && bun run lint && bun run typecheck && bun run test && bun run build"
 	},
 	"dependencies": {
+		"@prisma/client": "^6.17.1",
 		"@radix-ui/react-dialog": "^1.1.15",
 		"@radix-ui/react-label": "^2.1.7",
 		"@radix-ui/react-navigation-menu": "^1.2.14",
@@ -23,6 +26,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"lucide-react": "^0.545.0",
+		"prisma": "^6.17.1",
 		"react": "^19",
 		"react-dom": "^19",
 		"react-error-boundary": "^6.0.0",

@@ -20,6 +20,14 @@
 			"suspicious": {
 				"noUnknownAtRules": "off",
 				"noExplicitAny": "error"
+			},
+			"style": {
+				"useImportType": {
+					"level": "error",
+					"options": {
+						"style": "separatedType"
+					}
+				}
 			}
 		}
 	},

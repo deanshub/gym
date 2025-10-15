@@ -1,8 +1,12 @@
+import type { Exercise, Program } from "@prisma/client";
 import { Play } from "lucide-react";
 import useSWR from "swr";
-import type { Exercise, ProgramCardProps } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
+interface ProgramCardProps {
+	program: Program;
+}
 
 export function ProgramCard({ program }: ProgramCardProps) {
 	const { data: exercises = [] } = useSWR<Exercise[]>(

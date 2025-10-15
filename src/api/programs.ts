@@ -1,12 +1,12 @@
-import db from "../db/index";
+import { prisma } from "../lib/prisma";
 
 export const programsRoutes = {
 	// Get all programs without exercises
 	"/programs": {
 		async GET() {
-			const programs = db
-				.prepare("SELECT * FROM programs ORDER BY created_at ASC")
-				.all();
+			const programs = await prisma.program.findMany({
+				orderBy: { createdAt: "asc" },
+			});
 
 			return Response.json(programs);
 		},
@@ -15,9 +15,11 @@ export const programsRoutes = {
 			const { name } = await req.json();
 			const id = Date.now().toString();
 
-			db.prepare("INSERT INTO programs (id, name) VALUES (?, ?)").run(id, name);
+			const program = await prisma.program.create({
+				data: { id, name },
+			});
 
-			return Response.json({ id, name });
+			return Response.json(program);
 		},
 	},
 
@@ -25,7 +27,9 @@ export const programsRoutes = {
 	"/programs/:id": {
 		async GET(req: { params: { id: string } }) {
 			const id = req.params.id;
-			const program = db.prepare("SELECT * FROM programs WHERE id = ?").get(id);
+			const program = await prisma.program.findUnique({
+				where: { id },
+			});
 
 			if (!program) {
 				return Response.json({ error: "Program not found" }, { status: 404 });
@@ -40,7 +44,10 @@ export const programsRoutes = {
 			const { name } = await req.json();
 			const id = req.params.id;
 
-			db.prepare("UPDATE programs SET name = ? WHERE id = ?").run(name, id);
+			await prisma.program.update({
+				where: { id },
+				data: { name },
+			});
 
 			return Response.json({ success: true });
 		},
@@ -48,7 +55,9 @@ export const programsRoutes = {
 		async DELETE(req: { params: { id: string } }) {
 			const id = req.params.id;
 
-			db.prepare("DELETE FROM programs WHERE id = ?").run(id);
+			await prisma.program.delete({
+				where: { id },
+			});
 
 			return Response.json({ success: true });
 		},
@@ -58,11 +67,10 @@ export const programsRoutes = {
 	"/programs/:id/exercises": {
 		async GET(req: { params: { id: string } }) {
 			const id = req.params.id;
-			const exercises = db
-				.prepare(
-					"SELECT * FROM exercises WHERE program_id = ? ORDER BY created_at",
-				)
-				.all(id);
+			const exercises = await prisma.exercise.findMany({
+				where: { programId: id },
+				orderBy: { createdAt: "asc" },
+			});
 
 			return Response.json(exercises);
 		},
@@ -77,14 +85,14 @@ export const programsRoutes = {
 			}>;
 		}) {
 			const { name, sets, reps, weight } = await req.json();
-			const program_id = req.params.id;
+			const programId = req.params.id;
 			const id = Date.now().toString();
 
-			db.prepare(
-				"INSERT INTO exercises (id, program_id, name, sets, reps, weight) VALUES (?, ?, ?, ?, ?, ?)",
-			).run(id, program_id, name, sets, reps, weight);
+			const exercise = await prisma.exercise.create({
+				data: { id, programId, name, sets, reps, weight },
+			});
 
-			return Response.json({ id, program_id, name, sets, reps, weight });
+			return Response.json(exercise);
 		},
 	},
 
@@ -93,7 +101,9 @@ export const programsRoutes = {
 		async DELETE(req: { params: { id: string } }) {
 			const id = req.params.id;
 
-			db.prepare("DELETE FROM exercises WHERE id = ?").run(id);
+			await prisma.exercise.delete({
+				where: { id },
+			});
 
 			return Response.json({ success: true });
 		},

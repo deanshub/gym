@@ -1,7 +1,8 @@
+import type { Exercise, Program } from "@prisma/client";
 import { DiamondPlus, Edit, Plus, Target, Trash2 } from "lucide-react";
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
-import type { Exercise, Program } from "../types";
+import type { ProgramWithExercises } from "../types";
 import { EmptyState } from "./EmptyState";
 import { ProgramExercises } from "./ProgramExercises";
 import { ProgramForm } from "./ProgramForm";
@@ -11,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 export function ProgramsPage() {
 	const { data: programs = [] } = useSWR<Program[]>("/api/programs");
-	const [editingProgram, setEditingProgram] = useState<Program | null>(null);
+	const [editingProgram, setEditingProgram] =
+		useState<ProgramWithExercises | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [dialogMode, setDialogMode] = useState<
 		"create" | "rename" | "exercises"
@@ -60,7 +62,7 @@ export function ProgramsPage() {
 
 	const addExercise = async (
 		programId: string,
-		exercise: Omit<Exercise, "id">,
+		exercise: Pick<Exercise, "name" | "sets" | "reps" | "weight">,
 	) => {
 		const response = await fetch(`/api/programs/${programId}/exercises`, {
 			method: "POST",
@@ -113,7 +115,7 @@ export function ProgramsPage() {
 		if (mode === "exercises" && program) {
 			setEditingProgram({ ...program, exercises: [] });
 		} else {
-			setEditingProgram(program || null);
+			setEditingProgram(program ? { ...program, exercises: [] } : null);
 		}
 		setIsDialogOpen(true);
 	};

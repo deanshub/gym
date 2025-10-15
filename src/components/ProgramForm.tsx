@@ -1,8 +1,20 @@
+import type { Exercise, Program } from "@prisma/client";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
-import type { ProgramFormProps } from "../types";
+import type { ProgramWithExercises } from "@/types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+
+interface ProgramFormProps {
+	program: ProgramWithExercises | null;
+	mode: "create" | "rename" | "exercises";
+	onSave: (program: Program) => void;
+	onAddExercise: (
+		programId: string,
+		exercise: Pick<Exercise, "name" | "sets" | "reps" | "weight">,
+	) => void;
+	onDeleteExercise: (programId: string, exerciseId: string) => void;
+}
 
 export function ProgramForm({
 	program,
@@ -37,7 +49,7 @@ export function ProgramForm({
 			onSave({
 				id: program?.id || Date.now().toString(),
 				name,
-				exercises: program?.exercises || [],
+				createdAt: program?.createdAt || new Date(),
 			});
 		}
 	};

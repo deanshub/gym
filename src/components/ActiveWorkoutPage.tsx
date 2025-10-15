@@ -3,6 +3,7 @@ import { CheckCircle, ChevronDown, ChevronUp, TimerOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
+import { formatMuscleGroup } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
@@ -227,6 +228,9 @@ export function ActiveWorkoutPage() {
 			<Card className="mb-6">
 				<CardHeader>
 					<CardTitle className="text-2xl">{currentExercise.name}</CardTitle>
+					<p className="text-sm text-blue-600 font-medium">
+						{formatMuscleGroup(currentExercise.group)}
+					</p>
 				</CardHeader>
 				<CardContent>
 					<div className="grid grid-cols-3 gap-4 text-center mb-6">

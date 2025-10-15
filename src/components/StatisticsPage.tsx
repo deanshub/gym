@@ -6,6 +6,7 @@ import type {
 } from "@prisma/client";
 import { format } from "date-fns";
 import useSWR from "swr";
+import { formatMuscleGroup } from "../lib/utils";
 
 type PerformanceWithRelations = ExercisePerformance & {
 	exercise: Exercise;
@@ -17,22 +18,29 @@ export function StatisticsPage() {
 		"/api/exercise-performances",
 	);
 
-	// Group performances by program, then by exercise
-	const performancesByProgram = performances.reduce(
+	// Group performances by muscle group, then by program, then by exercise
+	const performancesByMuscleGroup = performances.reduce(
 		(acc, performance) => {
+			const muscleGroup = performance.exercise.group;
 			const programName = performance.workout.program.name;
 			const exerciseName = performance.exercise.name;
 
-			if (!acc[programName]) {
-				acc[programName] = {};
+			if (!acc[muscleGroup]) {
+				acc[muscleGroup] = {};
 			}
-			if (!acc[programName][exerciseName]) {
-				acc[programName][exerciseName] = [];
+			if (!acc[muscleGroup][programName]) {
+				acc[muscleGroup][programName] = {};
 			}
-			acc[programName][exerciseName].push(performance);
+			if (!acc[muscleGroup][programName][exerciseName]) {
+				acc[muscleGroup][programName][exerciseName] = [];
+			}
+			acc[muscleGroup][programName][exerciseName].push(performance);
 			return acc;
 		},
-		{} as Record<string, Record<string, PerformanceWithRelations[]>>,
+		{} as Record<
+			string,
+			Record<string, Record<string, PerformanceWithRelations[]>>
+		>,
 	);
 
 	return (
@@ -45,49 +53,69 @@ export function StatisticsPage() {
 				</p>
 			) : (
 				<div className="space-y-6">
-					{Object.entries(performancesByProgram).map(
-						([programName, exerciseGroups]) => (
-							<div key={programName} className="border rounded-lg p-4">
-								<h3 className="text-lg font-semibold mb-4">{programName}</h3>
+					{Object.entries(performancesByMuscleGroup).map(
+						([muscleGroup, programs]) => (
+							<div key={muscleGroup} className="border rounded-lg p-4">
+								<h3 className="text-lg font-semibold mb-4">
+									{formatMuscleGroup(muscleGroup)}
+								</h3>
 								<div className="space-y-4">
-									{Object.entries(exerciseGroups).map(
-										([exerciseName, exercisePerformances]) => (
+									{Object.entries(programs).map(
+										([programName, exerciseGroups]) => (
 											<div
-												key={exerciseName}
-												className="bg-gray-50 rounded p-3"
+												key={programName}
+												className="border-l-4 border-blue-200 pl-4"
 											>
-												<h4 className="font-medium mb-3">{exerciseName}</h4>
-												<div className="space-y-2">
-													{exercisePerformances.map((performance) => (
-														<div
-															key={performance.id}
-															className="p-2 bg-white rounded text-sm"
-														>
-															<div className="flex justify-between items-center">
-																<div className="flex gap-4">
-																	<span>{performance.sets} sets</span>
-																	<span>{performance.reps} reps</span>
-																	<span>{performance.weight}kg</span>
-																	<span className="text-gray-600">
-																		{Math.round(
-																			(new Date(performance.endTime).getTime() -
-																				new Date(
-																					performance.startTime,
-																				).getTime()) /
-																				1000,
-																		)}
-																		s
-																	</span>
-																</div>
-																<div className="text-gray-500">
-																	{format(
-																		new Date(performance.startTime),
-																		"MMM d, yyyy",
-																	)}
+												<h4 className="text-md font-medium mb-3 text-blue-700">
+													{programName}
+												</h4>
+												<div className="space-y-3">
+													{Object.entries(exerciseGroups).map(
+														([exerciseName, exercisePerformances]) => (
+															<div
+																key={exerciseName}
+																className="bg-gray-50 rounded p-3"
+															>
+																<h5 className="font-medium mb-3">
+																	{exerciseName}
+																</h5>
+																<div className="space-y-2">
+																	{exercisePerformances.map((performance) => (
+																		<div
+																			key={performance.id}
+																			className="p-2 bg-white rounded text-sm"
+																		>
+																			<div className="flex justify-between items-center">
+																				<div className="flex gap-4">
+																					<span>{performance.sets} sets</span>
+																					<span>{performance.reps} reps</span>
+																					<span>{performance.weight}kg</span>
+																					<span className="text-gray-600">
+																						{Math.round(
+																							(new Date(
+																								performance.endTime,
+																							).getTime() -
+																								new Date(
+																									performance.startTime,
+																								).getTime()) /
+																								1000,
+																						)}
+																						s
+																					</span>
+																				</div>
+																				<div className="text-gray-500">
+																					{format(
+																						new Date(performance.startTime),
+																						"MMM d, yyyy",
+																					)}
+																				</div>
+																			</div>
+																		</div>
+																	))}
 																</div>
 															</div>
-														</div>
-													))}
+														),
+													)}
 												</div>
 											</div>
 										),

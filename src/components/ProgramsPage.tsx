@@ -72,7 +72,10 @@ export function ProgramsPage() {
 
 	const addExercise = async (
 		programId: string,
-		exercise: Pick<Exercise, "name" | "sets" | "reps" | "weight" | "group" | "weightType">,
+		exercise: Pick<
+			Exercise,
+			"name" | "sets" | "reps" | "weight" | "group" | "weightType"
+		>,
 	) => {
 		const response = await fetch(`/api/programs/${programId}/exercises`, {
 			method: "POST",

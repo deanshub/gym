@@ -3,9 +3,23 @@ import { CheckCircle, ChevronDown, ChevronUp, TimerOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
-import type { WorkoutSession } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
+interface WorkoutSession {
+	workoutId: string;
+	currentExerciseIndex: number;
+	startTime: Date;
+	exerciseStartTime: Date | null;
+	completedExercises: Array<{
+		exerciseId: string;
+		startTime: Date;
+		endTime: Date;
+		sets: number;
+		reps: number;
+		weight: number;
+	}>;
+}
 
 export function ActiveWorkoutPage() {
 	const { programId } = useParams<{ programId: string }>();
@@ -17,6 +31,7 @@ export function ActiveWorkoutPage() {
 	const [session, setSession] = useState<WorkoutSession>(() => {
 		const now = new Date();
 		return {
+			workoutId: Date.now().toString(),
 			currentExerciseIndex: 0,
 			startTime: now,
 			exerciseStartTime: now,
@@ -42,15 +57,32 @@ export function ActiveWorkoutPage() {
 		weight: 0,
 	});
 
+	// Create workout session on component mount
+	useEffect(() => {
+		if (programId) {
+			fetch("/api/workouts", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					id: session.workoutId,
+					programId,
+					startTime: session.startTime.toISOString(),
+				}),
+			});
+		}
+	}, [programId, session.workoutId, session.startTime]);
+
 	// Update current exercise values when exercise changes
 	useEffect(() => {
 		if (exercises.length > 0) {
 			const currentExercise = exercises[session.currentExerciseIndex];
-			setCurrentExerciseValues({
-				sets: currentExercise.sets,
-				reps: currentExercise.reps,
-				weight: currentExercise.weight,
-			});
+			if (currentExercise) {
+				setCurrentExerciseValues({
+					sets: currentExercise.sets,
+					reps: currentExercise.reps,
+					weight: currentExercise.weight,
+				});
+			}
 		}
 	}, [exercises, session.currentExerciseIndex]);
 
@@ -61,22 +93,38 @@ export function ActiveWorkoutPage() {
 		}));
 	};
 
-	const completeExercise = () => {
+	const completeExercise = async () => {
 		if (!exercises.length) return;
 
 		const now = new Date();
 		const currentExercise = exercises[session.currentExerciseIndex];
+		if (!currentExercise) return;
+
+		const performance = {
+			exerciseId: currentExercise.id,
+			startTime: session.exerciseStartTime || now,
+			endTime: now,
+			sets: currentExerciseValues.sets,
+			reps: currentExerciseValues.reps,
+			weight: currentExerciseValues.weight,
+		};
+
+		// Save exercise performance
+		await fetch("/api/exercise-performances", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				id: Date.now().toString(),
+				workoutId: session.workoutId,
+				...performance,
+				startTime: performance.startTime.toISOString(),
+				endTime: performance.endTime.toISOString(),
+			}),
+		});
 
 		const updatedSession = {
 			...session,
-			completedExercises: [
-				...session.completedExercises,
-				{
-					exerciseId: currentExercise.id,
-					startTime: session.exerciseStartTime || now,
-					endTime: now,
-				},
-			],
+			completedExercises: [...session.completedExercises, performance],
 		};
 
 		if (session.currentExerciseIndex < exercises.length - 1) {
@@ -86,12 +134,27 @@ export function ActiveWorkoutPage() {
 				exerciseStartTime: now,
 			});
 		} else {
-			// Workout complete - navigate back
+			// Workout complete - update workout end time
+			await fetch(`/api/workouts/${session.workoutId}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					endTime: now.toISOString(),
+				}),
+			});
 			window.location.href = "/";
 		}
 	};
 
-	const stopWorkout = () => {
+	const stopWorkout = async () => {
+		// Update workout end time
+		await fetch(`/api/workouts/${session.workoutId}`, {
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				endTime: new Date().toISOString(),
+			}),
+		});
 		window.location.href = "/";
 	};
 
@@ -104,6 +167,8 @@ export function ActiveWorkoutPage() {
 	}
 
 	const currentExercise = exercises[session.currentExerciseIndex];
+	if (!currentExercise) return null;
+
 	const progress =
 		((session.currentExerciseIndex + 1) / exercises.length) * 100;
 
@@ -233,7 +298,7 @@ export function ActiveWorkoutPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-2">
-							{session.completedExercises.map((completed) => {
+							{session.completedExercises.map((completed, index) => {
 								const exercise = exercises.find(
 									(e) => e.id === completed.exerciseId,
 								);
@@ -244,11 +309,14 @@ export function ActiveWorkoutPage() {
 								);
 								return (
 									<div
-										key={completed.exerciseId}
+										key={`${completed.exerciseId}-${index}`}
 										className="flex justify-between items-center p-2 bg-gray-50 rounded"
 									>
 										<span>{exercise?.name}</span>
-										<span className="text-sm text-gray-600">{duration}s</span>
+										<span className="text-sm text-gray-600">
+											{completed.sets}×{completed.reps} @ {completed.weight}kg (
+											{duration}s)
+										</span>
 									</div>
 								);
 							})}

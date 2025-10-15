@@ -1,9 +1,19 @@
 import type { Exercise, Program } from "@prisma/client";
-import { Trash2 } from "lucide-react";
+import { $Enums } from "@prisma/client";
+import { Dumbbell, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { ProgramWithExercises } from "@/types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
+
+const MUSCLE_GROUPS = Object.values($Enums.MuscleGroup);
 
 interface ProgramFormProps {
 	program: ProgramWithExercises | null;
@@ -11,7 +21,7 @@ interface ProgramFormProps {
 	onSave: (program: Program) => void;
 	onAddExercise: (
 		programId: string,
-		exercise: Pick<Exercise, "name" | "sets" | "reps" | "weight">,
+		exercise: Pick<Exercise, "name" | "sets" | "reps" | "weight" | "group">,
 	) => void;
 	onDeleteExercise: (programId: string, exerciseId: string) => void;
 }
@@ -28,19 +38,24 @@ export function ProgramForm({
 	const [sets, setSets] = useState("");
 	const [reps, setReps] = useState("");
 	const [weight, setWeight] = useState("");
+	const [muscleGroup, setMuscleGroup] = useState<
+		$Enums.MuscleGroup | undefined
+	>();
 
 	const handleAddExercise = () => {
-		if (program && exerciseName && sets && reps && weight) {
+		if (program && exerciseName && sets && reps && weight && muscleGroup) {
 			onAddExercise(program.id, {
 				name: exerciseName,
 				sets: parseInt(sets, 10),
 				reps: parseInt(reps, 10),
 				weight: parseFloat(weight),
+				group: muscleGroup as $Enums.MuscleGroup,
 			});
 			setExerciseName("");
 			setSets("");
 			setReps("");
 			setWeight("");
+			setMuscleGroup(undefined);
 		}
 	};
 
@@ -50,6 +65,7 @@ export function ProgramForm({
 				id: program?.id || Date.now().toString(),
 				name,
 				createdAt: program?.createdAt || new Date(),
+				updatedAt: new Date(),
 			});
 		}
 	};
@@ -82,8 +98,29 @@ export function ProgramForm({
 						value={weight}
 						onChange={(e) => setWeight(e.target.value)}
 					/>
+					<Select
+						value={muscleGroup}
+						onValueChange={(value) =>
+							setMuscleGroup(value as $Enums.MuscleGroup)
+						}
+					>
+						<SelectTrigger>
+							<SelectValue placeholder="Select muscle group" />
+						</SelectTrigger>
+						<SelectContent>
+							{MUSCLE_GROUPS.map((group) => (
+								<SelectItem key={group} value={group}>
+									{group
+										.replace(/_/g, " ")
+										.toLowerCase()
+										.replace(/\b\w/g, (l) => l.toUpperCase())}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</div>
 				<Button onClick={handleAddExercise} className="w-full">
+					<Dumbbell size={16} />
 					Add Exercise
 				</Button>
 

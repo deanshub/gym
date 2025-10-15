@@ -25,3 +25,14 @@
 - Separate components for different concerns
 - Use SWR for data fetching with suspense
 - Maintain clean state management patterns
+
+## Date Handling
+- Always use date-fns for date formatting and manipulation
+- Never use native Date methods for formatting
+- Import specific functions from date-fns (e.g., `import { format } from 'date-fns'`)
+
+## Code Style
+- Use TypeScript for all new files
+- Follow existing Biome configuration
+- Use Prisma for all database operations
+- Prefer `import type` for type-only imports

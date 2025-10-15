@@ -82,14 +82,15 @@ export const programsRoutes = {
 				sets: number;
 				reps: number;
 				weight: number;
+				group: string;
 			}>;
 		}) {
-			const { name, sets, reps, weight } = await req.json();
+			const { name, sets, reps, weight, group } = await req.json();
 			const programId = req.params.id;
 			const id = Date.now().toString();
 
 			const exercise = await prisma.exercise.create({
-				data: { id, programId, name, sets, reps, weight },
+				data: { id, programId, name, sets, reps, weight, group },
 			});
 
 			return Response.json(exercise);

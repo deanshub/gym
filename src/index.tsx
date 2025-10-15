@@ -1,13 +1,17 @@
 import { serve } from "bun";
+import { exercisePerformancesRoutes } from "./api/exercise-performances";
 import helloRoutes from "./api/hello";
 import { programsRoutes } from "./api/programs";
+import { workoutsRoutes } from "./api/workouts";
 import index from "./index.html";
 
 const apiRoutes = Object.fromEntries(
-	Object.entries({ ...helloRoutes, ...programsRoutes }).map(([key, value]) => [
-		`/api${key}`,
-		value,
-	]),
+	Object.entries({
+		...helloRoutes,
+		...programsRoutes,
+		...workoutsRoutes,
+		...exercisePerformancesRoutes,
+	}).map(([key, value]) => [`/api${key}`, value]),
 );
 
 const server = serve({

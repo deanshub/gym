@@ -10,25 +10,84 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MuscleGroup {
+  NECK
+  UPPER_TRAPS
+  MIDDLE_TRAPS
+  FRONT_SHOULDERS
+  REAR_SHOULDERS
+  CHEST
+  TRICEPS
+  BICEPS
+  FOREARMS
+  HANDS
+  LATS
+  OBLIQUES
+  ABDOMINALS
+  LOWER_BACK
+  GLUTES
+  QUADS
+  HAMSTRINGS
+  CALVES
+}
+
 model Program {
   id        String     @id
   name      String
   createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
   exercises Exercise[]
+  workouts  Workout[]
 
   @@map("programs")
 }
 
 model Exercise {
-  id        String   @id
-  programId String   @map("program_id")
+  id        String      @id
+  programId String      @map("program_id")
   name      String
-  sets      Int
-  reps      Int
-  weight    Float
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @map("updated_at")
-  program   Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  group     MuscleGroup
+  sets      Int // Default/template values
+  reps      Int // Default/template values
+  weight    Float // Default/template values
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  program   Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  // Track actual performance
+  exercisePerformances ExercisePerformance[]
 
   @@map("exercises")
+}
+
+model Workout {
+  id        String    @id
+  programId String    @map("program_id")
+  startTime DateTime  @map("start_time")
+  endTime   DateTime? @map("end_time")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  program   Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  exercisePerformances ExercisePerformance[]
+
+  @@map("workouts")
+}
+
+model ExercisePerformance {
+  id         String   @id
+  workoutId  String   @map("workout_id")
+  exerciseId String   @map("exercise_id")
+  sets       Int // Actual performed sets
+  reps       Int // Actual performed reps
+  weight     Float // Actual performed weight
+  startTime  DateTime @map("start_time")
+  endTime    DateTime @map("end_time")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  workout  Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@map("exercise_performances")
 }

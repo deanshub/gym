@@ -1,5 +1,5 @@
 import type { Exercise, Program } from "@prisma/client";
-import { DiamondPlus, Edit, Plus, Target, Trash2 } from "lucide-react";
+import { Dumbbell, Edit, Plus, Target, Trash2 } from "lucide-react";
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
 import type { ProgramWithExercises } from "../types";
@@ -62,7 +62,7 @@ export function ProgramsPage() {
 
 	const addExercise = async (
 		programId: string,
-		exercise: Pick<Exercise, "name" | "sets" | "reps" | "weight">,
+		exercise: Pick<Exercise, "name" | "sets" | "reps" | "weight" | "group">,
 	) => {
 		const response = await fetch(`/api/programs/${programId}/exercises`, {
 			method: "POST",
@@ -185,8 +185,10 @@ export function ProgramsPage() {
 												variant="outline"
 												size="sm"
 												onClick={() => openDialog("exercises", program)}
+												className="relative w-12 flex items-center justify-center"
 											>
-												<DiamondPlus size={14} />
+												<Plus size={14} />
+												<Dumbbell size={14} />
 											</Button>
 											<Button
 												variant="outline"

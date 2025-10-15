@@ -10,4 +10,5 @@ RUN bun run build
 
 EXPOSE 3000
 
-CMD ["bun", "start"]
+# Run migrations and start the application
+CMD ["sh", "-c", "bun run prisma:migrate:deploy && bun run prisma:generate && bun start"]

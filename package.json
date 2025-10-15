@@ -13,6 +13,7 @@
 		"lint:fix": "biome check --write .",
 		"typecheck": "bunx tsc --noEmit",
 		"prisma:generate": "prisma generate",
+		"prisma:migrate:deploy": "prisma migrate deploy",
 		"ci": "bun run prisma:generate && bun run lint && bun run typecheck && bun run test && bun run build"
 	},
 	"dependencies": {

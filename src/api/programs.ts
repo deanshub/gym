@@ -28,7 +28,7 @@ export const programsRoutes = {
 			const program = db.prepare("SELECT * FROM programs WHERE id = ?").get(id);
 
 			if (!program) {
-				return new Response("Program not found", { status: 404 });
+				return Response.json({ error: "Program not found" }, { status: 404 });
 			}
 
 			return Response.json(program);

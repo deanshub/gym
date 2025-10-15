@@ -28,7 +28,9 @@ export function ActiveWorkoutPage() {
 	// Timer effect
 	useEffect(() => {
 		const interval = setInterval(() => {
-			setElapsedTime(Math.floor((Date.now() - session.startTime.getTime()) / 1000));
+			setElapsedTime(
+				Math.floor((Date.now() - session.startTime.getTime()) / 1000),
+			);
 		}, 1000);
 		return () => clearInterval(interval);
 	}, [session.startTime]);
@@ -107,7 +109,7 @@ export function ActiveWorkoutPage() {
 	const formatTime = (seconds: number) => {
 		const mins = Math.floor(seconds / 60);
 		const secs = seconds % 60;
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
+		return `${mins}:${secs.toString().padStart(2, "0")}`;
 	};
 
 	return (

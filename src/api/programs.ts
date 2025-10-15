@@ -84,9 +84,10 @@ export const programsRoutes = {
 				reps: number;
 				weight: number;
 				group: string;
+				weightType: string;
 			}>;
 		}) {
-			const { name, sets, reps, weight, group } = await req.json();
+			const { name, sets, reps, weight, group, weightType } = await req.json();
 			const programId = req.params.id;
 			const id = `exercise_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -99,6 +100,7 @@ export const programsRoutes = {
 					reps,
 					weight,
 					group: group as $Enums.MuscleGroup,
+					weightType: weightType as $Enums.WeightType,
 				},
 			});
 

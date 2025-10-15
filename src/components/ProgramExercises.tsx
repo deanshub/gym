@@ -2,7 +2,7 @@ import type { Exercise } from "@prisma/client";
 import { Trash2 } from "lucide-react";
 import { Suspense } from "react";
 import useSWR from "swr";
-import { formatMuscleGroup } from "../lib/utils";
+import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
 import { Button } from "./ui/button";
 
 interface ProgramExercisesProps {
@@ -44,21 +44,43 @@ function ExercisesList({ programId, onDeleteExercise }: ProgramExercisesProps) {
 							{groupExercises.map((exercise) => (
 								<div
 									key={exercise.id}
-									className="flex justify-between items-center p-2 bg-gray-50 rounded"
+									className="flex items-center p-2 bg-gray-50 rounded"
 								>
-									<span>{exercise.name}</span>
-									<div className="flex gap-4 text-sm text-gray-600">
-										<span>{exercise.sets} sets</span>
-										<span>{exercise.reps} reps</span>
-										<span>{exercise.weight}kg</span>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => onDeleteExercise(programId, exercise.id)}
-										>
-											<Trash2 size={12} />
-										</Button>
+									<span className="flex-1">{exercise.name}</span>
+									<div className="flex gap-4">
+										<span className="flex flex-col items-center">
+											<div className="text-sm font-semibold">
+												{exercise.sets}
+											</div>
+											<div className="text-xs text-gray-600 capitalize">
+												sets
+											</div>
+										</span>
+										<span className="flex flex-col items-center">
+											<div className="text-sm font-semibold">
+												{exercise.reps}
+											</div>
+											<div className="text-xs text-gray-600 capitalize">
+												reps
+											</div>
+										</span>
+										<span className="flex flex-col items-center">
+											<div className="">
+												{getWeightTypeIcon(exercise.weightType, 12)}
+											</div>
+											<div className="text-sm font-semibold">
+												{exercise.weight}
+												<small className="text-xs text-gray-600">kg</small>
+											</div>
+										</span>
 									</div>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => onDeleteExercise(programId, exercise.id)}
+									>
+										<Trash2 size={12} />
+									</Button>
 								</div>
 							))}
 						</div>

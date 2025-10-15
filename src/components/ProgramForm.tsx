@@ -1,6 +1,8 @@
-import type { $Enums, Exercise, Program } from "@prisma/client";
+import type { Exercise, Program } from "@prisma/client";
+import { $Enums } from "@prisma/client";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import type { ProgramWithExercises } from "@/types";
+import { getWeightTypeIcon } from "../lib/utils";
 import { MuscleAnatomy } from "./MuscleAnatomy";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -12,7 +14,10 @@ interface ProgramFormProps {
 	onSave: (program: Program) => void;
 	onAddExercise: (
 		programId: string,
-		exercise: Pick<Exercise, "name" | "sets" | "reps" | "weight" | "group">,
+		exercise: Pick<
+			Exercise,
+			"name" | "sets" | "reps" | "weight" | "group" | "weightType"
+		>,
 	) => void;
 	onMuscleGroupChange?: (hasSelection: boolean) => void;
 }
@@ -39,9 +44,23 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 		const [sets, setSets] = useState("");
 		const [reps, setReps] = useState("");
 		const [weight, setWeight] = useState("");
+		const [weightType, setWeightType] =
+			useState<$Enums.WeightType>("TOTAL_WEIGHT");
 		const [muscleGroup, setMuscleGroup] = useState<
 			$Enums.MuscleGroup | undefined
 		>();
+
+		const cycleWeightType = () => {
+			const types = Object.values($Enums.WeightType);
+			const currentIndex = types.indexOf(weightType);
+			const nextIndex = (currentIndex + 1) % types.length;
+			setWeightType(types[nextIndex]);
+		};
+
+		const getWeightTypeIconLocal = () => {
+			return getWeightTypeIcon(weightType, 16);
+		};
+
 		const handleAddExercise = () => {
 			if (program && exerciseName && sets && reps && weight && muscleGroup) {
 				onAddExercise(program.id, {
@@ -50,13 +69,21 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 					reps: parseInt(reps, 10),
 					weight: parseFloat(weight),
 					group: muscleGroup as $Enums.MuscleGroup,
+					weightType,
 				});
+
 				setExerciseName("");
 				setSets("");
 				setReps("");
 				setWeight("");
+				setWeightType("TOTAL_WEIGHT");
 				setMuscleGroup(undefined);
 			}
+		};
+
+		const handleMuscleSelect = (muscle: $Enums.MuscleGroup) => {
+			setMuscleGroup(muscle);
+			onMuscleGroupChange?.(!!muscle);
 		};
 
 		useImperativeHandle(ref, () => ({
@@ -75,51 +102,29 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 			}
 		};
 
-		const handleMuscleSelect = (muscle: $Enums.MuscleGroup) => {
-			setMuscleGroup(muscle);
-			onMuscleGroupChange?.(!!muscle);
-		};
-
 		if (mode === "exercises" && program) {
 			return (
 				<div className="">
-					<h4 className="font-medium">Add Exercise to {program.name}</h4>
-
 					{wizardStep === 1 ? (
 						<div className="space-y-4">
-							<div className="text-sm text-gray-600">
-								Step 1 of 2: Choose muscle group
-							</div>
-							<div className="border rounded-lg p-4 bg-gray-50 min-h-[400px] flex items-center justify-center">
-								<MuscleAnatomy
-									selectedMuscles={muscleGroup ? [muscleGroup] : []}
-									onMuscleSelect={handleMuscleSelect}
-									multiSelect={false}
-								/>
-							</div>
+							<h3 className="text-lg font-semibold">
+								Select Muscle Group for Exercise
+							</h3>
+							<MuscleAnatomy
+								selectedMuscles={muscleGroup ? [muscleGroup] : []}
+								onMuscleSelect={handleMuscleSelect}
+							/>
 						</div>
 					) : (
 						<div className="space-y-4">
-							<div className="text-sm text-gray-600">
-								Step 2 of 2: Exercise details
-							</div>
-
+							<h3 className="text-lg font-semibold">Add Exercise Details</h3>
 							<div className="space-y-4">
-								<div className="p-3 bg-blue-50 rounded-lg">
-									<div className="text-sm font-medium text-blue-900">
-										Muscle Group:{" "}
-										{muscleGroup
-											?.replace(/_/g, " ")
-											.replace(/\b\w/g, (l) => l.toUpperCase())}
-									</div>
-								</div>
-
-								<div className="grid grid-cols-1 gap-4">
-									<Input
-										placeholder="Exercise name"
-										value={exerciseName}
-										onChange={(e) => setExerciseName(e.target.value)}
-									/>
+								<Input
+									placeholder="Exercise name"
+									value={exerciseName}
+									onChange={(e) => setExerciseName(e.target.value)}
+								/>
+								<div className="grid grid-cols-2 gap-4">
 									<Input
 										placeholder="Sets"
 										type="number"
@@ -132,13 +137,25 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 										value={reps}
 										onChange={(e) => setReps(e.target.value)}
 									/>
-									<Input
-										placeholder="Weight (kg)"
-										type="number"
-										step="0.5"
-										value={weight}
-										onChange={(e) => setWeight(e.target.value)}
-									/>
+									<div className="flex gap-2 col-span-2 items-center">
+										<Button
+											type="button"
+											variant="outline"
+											size="lg"
+											onClick={cycleWeightType}
+											className="p-2 mx-2"
+										>
+											{getWeightTypeIconLocal()}
+										</Button>
+										<Input
+											placeholder="Weight (kg)"
+											type="number"
+											step="0.5"
+											value={weight}
+											onChange={(e) => setWeight(e.target.value)}
+											className="flex-1"
+										/>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -155,7 +172,7 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 					onChange={(e) => setName(e.target.value)}
 				/>
 				<Button onClick={handleSave} className="w-full">
-					{mode === "create" ? "Create Program" : "Update Name"}
+					{mode === "create" ? "Create Program" : "Save Changes"}
 				</Button>
 			</div>
 		);

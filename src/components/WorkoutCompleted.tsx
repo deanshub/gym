@@ -35,7 +35,7 @@ export function WorkoutCompleted({
 			<div className="text-6xl">🎉</div>
 			<h1 className="text-3xl font-bold text-green-600">Congratulations!</h1>
 			<p className="text-xl text-gray-700">You completed your workout!</p>
-			
+
 			<Card className="max-w-md mx-auto">
 				<CardHeader>
 					<CardTitle>Workout Summary</CardTitle>
@@ -62,13 +62,22 @@ export function WorkoutCompleted({
 					<div className="flex justify-between">
 						<span>Total Reps:</span>
 						<span className="font-medium">
-							{completedExercises.reduce((sum, ex) => sum + (ex.sets * ex.reps), 0)}
+							{completedExercises.reduce(
+								(sum, ex) => sum + ex.sets * ex.reps,
+								0,
+							)}
 						</span>
 					</div>
 				</CardContent>
 			</Card>
 
-			<Button onClick={() => window.location.href = "/"} size="lg" className="w-full max-w-md">
+			<Button
+				onClick={() => {
+					window.location.href = "/";
+				}}
+				size="lg"
+				className="w-full max-w-md"
+			>
 				Back to Home
 			</Button>
 		</div>

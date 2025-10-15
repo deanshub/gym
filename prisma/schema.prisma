@@ -31,6 +31,13 @@ enum MuscleGroup {
   CALVES
 }
 
+enum WeightType {
+  BODYWEIGHT
+  PER_SIDE // Weight per side (e.g., 20kg per side on barbell)
+  TOTAL_WEIGHT // Total weight including bar/equipment
+  SINGLE_WEIGHT // Single dumbbell/kettlebell weight
+}
+
 model Program {
   id        String     @id
   name      String
@@ -43,16 +50,17 @@ model Program {
 }
 
 model Exercise {
-  id        String      @id
-  programId String      @map("program_id")
-  name      String
-  group     MuscleGroup
-  sets      Int // Default/template values
-  reps      Int // Default/template values
-  weight    Float // Default/template values
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
-  program   Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  id         String      @id
+  programId  String      @map("program_id")
+  name       String
+  group      MuscleGroup
+  weightType WeightType  @default(TOTAL_WEIGHT) @map("weight_type")
+  sets       Int // Default/template values
+  reps       Int // Default/template values
+  weight     Float // Default/template values
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  program    Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   // Track actual performance
   exercisePerformances ExercisePerformance[]

@@ -64,8 +64,8 @@ Create a `docker-compose.yml` file:
 
 ```yaml
 services:
-  gym-tracker:
-    build: .
+  gym:
+    image: ghcr.io/deanshub/gym:main
     ports:
       - "3000:3000"
     volumes:

@@ -1,7 +1,10 @@
 import { serve } from "bun";
+import serveStatic from "serve-static-bun";
 import { exercisePerformancesRoutes } from "./api/exercise-performances";
 import helloRoutes from "./api/hello";
 import { programsRoutes } from "./api/programs";
+import { progressPhotosRoutes } from "./api/progress-photos";
+import { weightLogsRoutes } from "./api/weight-logs";
 import { workoutsRoutes } from "./api/workouts";
 import index from "./index.html";
 
@@ -11,14 +14,19 @@ const apiRoutes = Object.fromEntries(
 		...programsRoutes,
 		...workoutsRoutes,
 		...exercisePerformancesRoutes,
+		...weightLogsRoutes,
+		...progressPhotosRoutes,
 	}).map(([key, value]) => [`/api${key}`, value]),
 );
 
 const server = serve({
 	routes: {
 		// Serve index.html for all unmatched routes.
-		"/*": index,
 		...apiRoutes,
+		"/public/*": serveStatic("public", {
+			stripFromPathname: "/public",
+		}),
+		"/*": index,
 	},
 
 	development: process.env.NODE_ENV !== "production" && {

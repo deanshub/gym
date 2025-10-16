@@ -27,6 +27,7 @@
 		"@radix-ui/react-select": "^2.2.6",
 		"@radix-ui/react-slot": "^1.2.3",
 		"@radix-ui/react-switch": "^1.2.6",
+		"@radix-ui/react-tabs": "^1.1.13",
 		"bun-plugin-tailwind": "^0.1.2",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
@@ -37,6 +38,7 @@
 		"react-dom": "^19",
 		"react-error-boundary": "^6.0.0",
 		"react-router-dom": "^7.9.4",
+		"serve-static-bun": "^0.5.3",
 		"swr": "^2.3.6",
 		"tailwind-merge": "^3.3.1"
 	},

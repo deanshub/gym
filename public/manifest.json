@@ -1,0 +1,19 @@
+{
+  "name": "Gym Workout Tracker",
+  "short_name": "Gym Tracker",
+  "description": "Track your gym workouts, exercises, and fitness progress",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "categories": ["health", "fitness", "lifestyle"],
+  "icons": [
+    {
+      "src": "/public/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

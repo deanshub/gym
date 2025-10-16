@@ -82,6 +82,25 @@ model Workout {
   @@map("workouts")
 }
 
+model ProgressPhoto {
+  id        String   @id
+  filename  String   // Original filename
+  filepath  String   // Path to stored file
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("progress_photos")
+}
+
+model WeightLog {
+  id        String   @id
+  weight    Float    // Weight in kg
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("weight_logs")
+}
+
 model ExercisePerformance {
   id         String   @id
   workoutId  String   @map("workout_id")

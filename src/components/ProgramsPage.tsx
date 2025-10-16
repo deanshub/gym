@@ -25,8 +25,9 @@ export function ProgramsPage() {
 	const [dialogMode, setDialogMode] = useState<
 		"create" | "rename" | "exercises"
 	>("create");
-	const [wizardStep, setWizardStep] = useState<1 | 2>(1);
+	const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
 	const [hasMuscleSelection, setHasMuscleSelection] = useState(false);
+	const [hasExerciseSelection, setHasExerciseSelection] = useState(false);
 	const formRef = useRef<ProgramFormRef>(null);
 
 	// Ensure programs is always an array
@@ -129,6 +130,7 @@ export function ProgramsPage() {
 			setEditingProgram({ ...program, exercises: [] });
 			setWizardStep(1);
 			setHasMuscleSelection(false);
+			setHasExerciseSelection(false);
 		} else {
 			setEditingProgram(program ? { ...program, exercises: [] } : null);
 		}
@@ -164,8 +166,10 @@ export function ProgramsPage() {
 							addExercise(programId, exercise);
 							setWizardStep(1);
 							setHasMuscleSelection(false);
+							setHasExerciseSelection(false);
 						}}
 						onMuscleGroupChange={setHasMuscleSelection}
+						onExerciseChange={setHasExerciseSelection}
 					/>
 					{dialogMode === "exercises" && (
 						<DialogFooter>
@@ -175,12 +179,24 @@ export function ProgramsPage() {
 										onClick={() => setWizardStep(2)}
 										disabled={!hasMuscleSelection}
 									>
+										Next: Choose Exercise
+									</Button>
+								</div>
+							) : wizardStep === 2 ? (
+								<div className="flex justify-between w-full">
+									<Button variant="outline" onClick={() => setWizardStep(1)}>
+										Back
+									</Button>
+									<Button
+										onClick={() => setWizardStep(3)}
+										disabled={!hasExerciseSelection}
+									>
 										Next: Exercise Details
 									</Button>
 								</div>
 							) : (
 								<div className="flex justify-between w-full">
-									<Button variant="outline" onClick={() => setWizardStep(1)}>
+									<Button variant="outline" onClick={() => setWizardStep(2)}>
 										Back
 									</Button>
 									<Button

@@ -2,7 +2,10 @@ import type { Exercise, Program } from "@prisma/client";
 import { $Enums } from "@prisma/client";
 import { forwardRef, useImperativeHandle, useState } from "react";
 import type { ProgramWithExercises } from "@/types";
+import type { ExerciseSearchResult } from "../lib/exercisedb";
+import { exerciseDB } from "../lib/exercisedb";
 import { getWeightTypeIcon } from "../lib/utils";
+import { ExerciseSearch } from "./ExerciseSearch";
 import { MuscleAnatomy } from "./MuscleAnatomy";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -10,7 +13,7 @@ import { Input } from "./ui/input";
 interface ProgramFormProps {
 	program: ProgramWithExercises | null;
 	mode: "create" | "rename" | "exercises";
-	wizardStep?: 1 | 2;
+	wizardStep?: 1 | 2 | 3;
 	onSave: (program: Program) => void;
 	onAddExercise: (
 		programId: string,
@@ -20,11 +23,13 @@ interface ProgramFormProps {
 		>,
 	) => void;
 	onMuscleGroupChange?: (hasSelection: boolean) => void;
+	onExerciseChange?: (hasSelection: boolean) => void;
 }
 
 export interface ProgramFormRef {
 	submitExercise: () => void;
 	canProceedToStep2: () => boolean;
+	canProceedToStep3: () => boolean;
 }
 
 export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
@@ -36,6 +41,7 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 			onSave,
 			onAddExercise,
 			onMuscleGroupChange,
+			onExerciseChange,
 		},
 		ref,
 	) => {
@@ -49,6 +55,9 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 		const [muscleGroup, setMuscleGroup] = useState<
 			$Enums.MuscleGroup | undefined
 		>();
+		const [selectedExerciseDB, setSelectedExerciseDB] =
+			useState<ExerciseSearchResult | null>(null);
+		const [useCustomExercise, setUseCustomExercise] = useState(false);
 
 		const cycleWeightType = () => {
 			const types = Object.values($Enums.WeightType);
@@ -62,22 +71,37 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 		};
 
 		const handleAddExercise = () => {
-			if (program && exerciseName && sets && reps && weight && muscleGroup) {
-				onAddExercise(program.id, {
-					name: exerciseName,
+			if (program && sets && reps && weight && muscleGroup) {
+				const exerciseData = {
+					name: selectedExerciseDB?.name || exerciseName,
 					sets: parseInt(sets, 10),
 					reps: parseInt(reps, 10),
 					weight: parseFloat(weight),
 					group: muscleGroup as $Enums.MuscleGroup,
 					weightType,
-				});
+					// ExerciseDB fields
+					exerciseDbId: selectedExerciseDB?.id,
+					instructions: selectedExerciseDB?.instructions,
+					gifUrl: selectedExerciseDB?.gifUrl,
+					equipment: selectedExerciseDB?.equipment,
+					target: selectedExerciseDB?.target,
+					bodyPart: selectedExerciseDB?.bodyPart,
+					secondaryMuscles: selectedExerciseDB?.secondaryMuscles
+						? JSON.stringify(selectedExerciseDB.secondaryMuscles)
+						: null,
+				};
 
+				onAddExercise(program.id, exerciseData);
+
+				// Reset form
 				setExerciseName("");
 				setSets("");
 				setReps("");
 				setWeight("");
 				setWeightType("TOTAL_WEIGHT");
 				setMuscleGroup(undefined);
+				setSelectedExerciseDB(null);
+				setUseCustomExercise(false);
 			}
 		};
 
@@ -86,9 +110,32 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 			onMuscleGroupChange?.(!!muscle);
 		};
 
+		const handleExerciseSelect = (exercise: ExerciseSearchResult) => {
+			setSelectedExerciseDB(exercise);
+			setExerciseName(exercise.name);
+			onExerciseChange?.(true);
+
+			// Auto-map muscle group if possible
+			const mappedMuscleGroup = exerciseDB.mapToMuscleGroup(exercise.target);
+			if (
+				mappedMuscleGroup &&
+				Object.values($Enums.MuscleGroup).includes(
+					mappedMuscleGroup as $Enums.MuscleGroup,
+				)
+			) {
+				setMuscleGroup(mappedMuscleGroup as $Enums.MuscleGroup);
+			}
+		};
+
 		useImperativeHandle(ref, () => ({
 			submitExercise: handleAddExercise,
 			canProceedToStep2: () => !!muscleGroup,
+			canProceedToStep3: () => {
+				if (useCustomExercise) {
+					return !!exerciseName.trim();
+				}
+				return !!selectedExerciseDB;
+			},
 		}));
 
 		const handleSave = () => {
@@ -115,15 +162,60 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 								onMuscleSelect={handleMuscleSelect}
 							/>
 						</div>
+					) : wizardStep === 2 ? (
+						<div className="space-y-4">
+							<h3 className="text-lg font-semibold">Choose Exercise</h3>
+							<div className="flex gap-2 mb-4">
+								<Button
+									type="button"
+									variant={!useCustomExercise ? "default" : "outline"}
+									onClick={() => setUseCustomExercise(false)}
+									size="sm"
+								>
+									Browse Exercises
+								</Button>
+								<Button
+									type="button"
+									variant={useCustomExercise ? "default" : "outline"}
+									onClick={() => setUseCustomExercise(true)}
+									size="sm"
+								>
+									Custom Exercise
+								</Button>
+							</div>
+
+							{useCustomExercise ? (
+								<Input
+									placeholder="Exercise name"
+									value={exerciseName}
+									onChange={(e) => {
+										setExerciseName(e.target.value);
+										onExerciseChange?.(!!e.target.value.trim());
+									}}
+								/>
+							) : (
+								<ExerciseSearch
+									onSelectExercise={handleExerciseSelect}
+									selectedMuscleGroup={muscleGroup}
+								/>
+							)}
+						</div>
 					) : (
 						<div className="space-y-4">
 							<h3 className="text-lg font-semibold">Add Exercise Details</h3>
 							<div className="space-y-4">
-								<Input
-									placeholder="Exercise name"
-									value={exerciseName}
-									onChange={(e) => setExerciseName(e.target.value)}
-								/>
+								{selectedExerciseDB && (
+									<div className="p-3 bg-blue-50 rounded-lg">
+										<h4 className="font-medium text-blue-900">
+											{selectedExerciseDB.name}
+										</h4>
+										<p className="text-sm text-blue-700 mt-1">
+											{selectedExerciseDB.instructions.length > 150
+												? `${selectedExerciseDB.instructions.substring(0, 150)}...`
+												: selectedExerciseDB.instructions}
+										</p>
+									</div>
+								)}
 								<div className="grid grid-cols-2 gap-4">
 									<Input
 										placeholder="Sets"

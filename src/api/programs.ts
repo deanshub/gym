@@ -85,9 +85,33 @@ export const programsRoutes = {
 				weight: number;
 				group: string;
 				weightType: string;
+				// ExerciseDB fields
+				exerciseDbId?: string;
+				instructions?: string;
+				gifUrl?: string;
+				imageUrl?: string;
+				equipment?: string;
+				target?: string;
+				bodyPart?: string;
+				secondaryMuscles?: string;
 			}>;
 		}) {
-			const { name, sets, reps, weight, group, weightType } = await req.json();
+			const {
+				name,
+				sets,
+				reps,
+				weight,
+				group,
+				weightType,
+				exerciseDbId,
+				instructions,
+				gifUrl,
+				imageUrl,
+				equipment,
+				target,
+				bodyPart,
+				secondaryMuscles,
+			} = await req.json();
 			const programId = req.params.id;
 			const id = `exercise_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -101,6 +125,15 @@ export const programsRoutes = {
 					weight,
 					group: group as $Enums.MuscleGroup,
 					weightType: weightType as $Enums.WeightType,
+					// ExerciseDB fields
+					exerciseDbId,
+					instructions,
+					gifUrl,
+					imageUrl,
+					equipment,
+					target,
+					bodyPart,
+					secondaryMuscles,
 				},
 			});
 

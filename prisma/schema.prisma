@@ -58,6 +58,17 @@ model Exercise {
   sets       Int // Default/template values
   reps       Int // Default/template values
   weight     Float // Default/template values
+  
+  // ExerciseDB integration fields
+  exerciseDbId String?    @map("exercise_db_id") // ExerciseDB API ID
+  instructions String?    // Exercise instructions
+  gifUrl       String?    @map("gif_url") // GIF animation URL
+  imageUrl     String?    @map("image_url") // Static image URL
+  equipment    String?    // Required equipment
+  target       String?    // Primary target muscle
+  bodyPart     String?    @map("body_part") // Body part category
+  secondaryMuscles String? @map("secondary_muscles") // JSON array of secondary muscles
+  
   createdAt  DateTime    @default(now()) @map("created_at")
   updatedAt  DateTime    @updatedAt @map("updated_at")
   program    Program     @relation(fields: [programId], references: [id], onDelete: Cascade)

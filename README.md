@@ -69,9 +69,10 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - /media/external/library/gym:/database
+      - /media/external/library/gym:/data
     environment:
-      - DATABASE_URL=file:/database/app.db
+      - DATABASE_URL=file:/data/app.db
+      - UPLOADS_DIR=/data/uploads
     restart: unless-stopped
 ```
 

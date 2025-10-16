@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { write } from "bun";
 import { prisma } from "../lib/prisma";
 
-const PHOTOS_DIR = process.env.PHOTOS_DIR || "/data/uploads/photos";
+const PHOTOS_DIR = process.env.PHOTOS_DIR || "/data/uploads";
 
 export const progressPhotosRoutes = {
 	// Get all progress photos

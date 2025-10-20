@@ -46,7 +46,9 @@ export function ProgramsPage() {
 		);
 	};
 
-	const updateProgram = async (updatedProgram: Program) => {
+	const updateProgram = async (
+		updatedProgram: Omit<Program, "userId" | "createdAt" | "updatedAt">,
+	) => {
 		await fetch(`/api/programs/${updatedProgram.id}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },

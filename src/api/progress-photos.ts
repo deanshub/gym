@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { write } from "bun";
+import { getCurrentUserId } from "../lib/auth";
 import { prisma } from "../lib/prisma";
 
 const PHOTOS_DIR = process.env.PHOTOS_DIR || "/data/uploads";
@@ -8,8 +9,10 @@ const PHOTOS_DIR = process.env.PHOTOS_DIR || "/data/uploads";
 export const progressPhotosRoutes = {
 	// Get all progress photos
 	"/progress-photos": {
-		async GET() {
+		async GET(req: Request) {
+			const userId = getCurrentUserId(req);
 			const photos = await prisma.progressPhoto.findMany({
+				where: { userId },
 				orderBy: { createdAt: "desc" },
 			});
 
@@ -18,6 +21,7 @@ export const progressPhotosRoutes = {
 
 		async POST(req: Request) {
 			try {
+				const userId = getCurrentUserId(req);
 				const formData = await req.formData();
 				const file = formData.get("photo") as File;
 
@@ -43,6 +47,7 @@ export const progressPhotosRoutes = {
 				const photo = await prisma.progressPhoto.create({
 					data: {
 						id,
+						userId,
 						filename: file.name,
 						filepath: `/uploads/photos/${filename}`,
 					},

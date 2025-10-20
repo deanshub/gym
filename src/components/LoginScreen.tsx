@@ -41,8 +41,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 	};
 
 	return (
-		<div className="min-h-screen flex items-center justify-center bg-gray-50">
-			<div className="max-w-md w-full space-y-8 p-8">
+		<div className="min-h-screen min-w-screen flex items-center justify-center bg-gray-50 relative">
+			<div
+				className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10"
+				style={{ backgroundImage: "url(/public/logo.png)" }}
+			/>
+			<div className="max-w-md w-full space-y-8 p-8 relative z-10">
 				<div className="text-center">
 					<h2 className="text-3xl font-bold text-gray-900">Gym Tracker</h2>
 					<p className="mt-2 text-gray-600">Sign in to your account</p>
@@ -68,7 +72,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							required
-							className="mt-1"
+							className="mt-1 bg-white"
 							placeholder="Enter your email"
 						/>
 					</div>
@@ -86,7 +90,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
 							required
-							className="mt-1"
+							className="mt-1 bg-white"
 							placeholder="Enter your password"
 						/>
 					</div>

@@ -36,6 +36,8 @@ export function Router() {
 	const handleLogin = (userData: User) => {
 		setUser(userData);
 		localStorage.setItem("gym-user", JSON.stringify(userData));
+		// Navigate to home after login
+		window.location.href = "/";
 	};
 
 	const handleLogout = async () => {

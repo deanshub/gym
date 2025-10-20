@@ -1,10 +1,13 @@
+import { getCurrentUserId } from "../lib/auth";
 import { prisma } from "../lib/prisma";
 
 export const workoutsRoutes = {
 	// Get all workouts
 	"/workouts": {
-		async GET() {
+		async GET(req: Request) {
+			const userId = getCurrentUserId(req);
 			const workouts = await prisma.workout.findMany({
+				where: { userId },
 				include: {
 					program: true,
 					exercisePerformances: {
@@ -19,12 +22,23 @@ export const workoutsRoutes = {
 		},
 
 		async POST(req: Request) {
+			const userId = getCurrentUserId(req);
 			const { programId, startTime } = await req.json();
+
+			// Verify program belongs to user
+			const program = await prisma.program.findFirst({
+				where: { id: programId, userId },
+			});
+
+			if (!program) {
+				return Response.json({ error: "Program not found" }, { status: 404 });
+			}
 
 			const workout = await prisma.workout.create({
 				data: {
 					id: `workout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 					programId,
+					userId,
 					startTime: new Date(startTime),
 				},
 			});

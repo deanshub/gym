@@ -3,11 +3,25 @@ import { PrismaClient, $Enums } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  // Create a demo user
+  const demoUser = await prisma.user.create({
+    data: {
+      id: 'admin',
+      email: process.env.ADMIN_EMAIL || 'admin@gym.com',
+      password: await Bun.password.hash(process.env.ADMIN_PASSWORD ?? 'password', {
+          algorithm: "bcrypt",
+          cost: 4,
+        }),
+      name: process.env.ADMIN_NAME || 'Demo User',
+    },
+  });
+
   // Create sample programs
   const aUpperBodyProgram = await prisma.program.create({
     data: {
       id: 'program_a_upper_body',
       name: 'A upper body',
+      userId: demoUser.id,
     },
   });
 
@@ -15,6 +29,7 @@ async function main() {
     data: {
       id: 'program_b_lower_body',
       name: 'B lower body',
+      userId: demoUser.id,
     },
   });
 

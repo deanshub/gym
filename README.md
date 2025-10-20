@@ -29,6 +29,16 @@ A lightweight web application for tracking gym workouts, managing exercise progr
 
 ## Quick Start
 
+### Environment Variables
+
+The application supports optional environment variables for setting up an admin user:
+
+- `ADMIN_NAME` - Name for the admin user (optional)
+- `ADMIN_EMAIL` - Email for the admin user (default: `admin@gym.com`)
+- `ADMIN_PASSWORD` - Password for the admin user (default: `password`)
+
+If these variables are not provided, a default admin user will be created with email `admin@gym.com` and password `password`.
+
 ### Development
 
 ```bash

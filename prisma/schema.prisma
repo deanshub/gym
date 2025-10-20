@@ -38,11 +38,30 @@ enum WeightType {
   SINGLE_WEIGHT // Single dumbbell/kettlebell weight
 }
 
+model User {
+  id        String   @id
+  email     String   @unique
+  password  String   // Hashed password
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  programs             Program[]
+  workouts             Workout[]
+  weightLogs           WeightLog[]
+  progressPhotos       ProgressPhoto[]
+  exercisePerformances ExercisePerformance[]
+
+  @@map("users")
+}
+
 model Program {
   id        String     @id
+  userId    String     @map("user_id")
   name      String
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   exercises Exercise[]
   workouts  Workout[]
 
@@ -70,11 +89,13 @@ model Exercise {
 
 model Workout {
   id        String    @id
+  userId    String    @map("user_id")
   programId String    @map("program_id")
   startTime DateTime  @map("start_time")
   endTime   DateTime? @map("end_time")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   program   Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   exercisePerformances ExercisePerformance[]
@@ -84,25 +105,30 @@ model Workout {
 
 model ProgressPhoto {
   id        String   @id
+  userId    String   @map("user_id")
   filename  String   // Original filename
   filepath  String   // Path to stored file
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("progress_photos")
 }
 
 model WeightLog {
   id        String   @id
+  userId    String   @map("user_id")
   weight    Float    // Weight in kg
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("weight_logs")
 }
 
 model ExercisePerformance {
   id         String   @id
+  userId     String   @map("user_id")
   workoutId  String   @map("workout_id")
   exerciseId String   @map("exercise_id")
   sets       Int // Actual performed sets
@@ -113,6 +139,7 @@ model ExercisePerformance {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   workout  Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 

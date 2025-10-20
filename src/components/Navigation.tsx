@@ -1,6 +1,7 @@
-import { BarChart3, Calendar, Dumbbell, Settings } from "lucide-react";
+import { BarChart3, Calendar, Dumbbell, LogOut, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
+import { Button } from "./ui/button";
 import {
 	NavigationMenu,
 	NavigationMenuItem,
@@ -8,7 +9,12 @@ import {
 	NavigationMenuList,
 } from "./ui/navigation-menu";
 
-export function Navigation() {
+interface NavigationProps {
+	user: { id: string; email: string; name: string | null };
+	onLogout: () => void;
+}
+
+export function Navigation({ user, onLogout }: NavigationProps) {
 	const location = useLocation();
 
 	const isActive = (path: string) => {
@@ -83,6 +89,21 @@ export function Navigation() {
 						</NavigationMenuItem>
 					</NavigationMenuList>
 				</NavigationMenu>
+
+				{/* User info and logout */}
+				<div className="flex items-center justify-between px-2 py-2 border-t bg-gray-50">
+					<span className="text-xs text-gray-600 truncate">
+						{user.name || user.email}
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={onLogout}
+						className="h-8 px-2"
+					>
+						<LogOut size={14} />
+					</Button>
+				</div>
 			</div>
 		</nav>
 	);

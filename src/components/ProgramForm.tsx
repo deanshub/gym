@@ -11,7 +11,9 @@ interface ProgramFormProps {
 	program: ProgramWithExercises | null;
 	mode: "create" | "rename" | "exercises";
 	wizardStep?: 1 | 2;
-	onSave: (program: Program) => void;
+	onSave: (
+		program: Omit<Program, "userId" | "createdAt" | "updatedAt">,
+	) => void;
 	onAddExercise: (
 		programId: string,
 		exercise: Pick<
@@ -96,8 +98,6 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 				onSave({
 					id: program?.id || Date.now().toString(),
 					name,
-					createdAt: program?.createdAt || new Date(),
-					updatedAt: new Date(),
 				});
 			}
 		};

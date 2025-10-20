@@ -1,5 +1,6 @@
 import { serve } from "bun";
 import serveStatic from "serve-static-bun";
+import { authRoutes } from "./api/auth";
 import { exercisePerformancesRoutes } from "./api/exercise-performances";
 import helloRoutes from "./api/hello";
 import { programsRoutes } from "./api/programs";
@@ -11,6 +12,7 @@ import index from "./index.html";
 const apiRoutes = Object.fromEntries(
 	Object.entries({
 		...helloRoutes,
+		...authRoutes,
 		...programsRoutes,
 		...workoutsRoutes,
 		...exercisePerformancesRoutes,

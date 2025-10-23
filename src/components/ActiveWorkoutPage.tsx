@@ -1,5 +1,13 @@
 import type { Exercise, Program } from "@prisma/client";
-import { CheckCircle, ChevronDown, ChevronUp, TimerOff } from "lucide-react";
+import {
+	CheckCircle,
+	ChevronDown,
+	ChevronLeft,
+	ChevronRight,
+	ChevronUp,
+	Edit,
+	TimerOff,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
@@ -15,6 +23,7 @@ interface WorkoutSession {
 	exerciseStartTime: Date | null;
 	completedExercises: Array<{
 		exerciseId: string;
+		performanceId: string;
 		startTime: Date;
 		endTime: Date;
 		sets: number;
@@ -55,11 +64,9 @@ export function ActiveWorkoutPage() {
 		return () => clearInterval(interval);
 	}, [session.startTime]);
 
-	const [currentExerciseValues, setCurrentExerciseValues] = useState({
-		sets: 0,
-		reps: 0,
-		weight: 0,
-	});
+	const [exerciseValues, setExerciseValues] = useState<
+		Record<string, { sets: number; reps: number; weight: number }>
+	>({});
 
 	// Create workout session on component mount
 	useEffect(() => {
@@ -81,25 +88,117 @@ export function ActiveWorkoutPage() {
 		}
 	}, [programId, session.workoutId, session.startTime]);
 
-	// Update current exercise values when exercise changes
+	// Initialize exercise values when exercises load
 	useEffect(() => {
 		if (exercises.length > 0) {
-			const currentExercise = exercises[session.currentExerciseIndex];
-			if (currentExercise) {
-				setCurrentExerciseValues({
-					sets: currentExercise.sets,
-					reps: currentExercise.reps,
-					weight: currentExercise.weight,
-				});
-			}
+			const initialValues: Record<
+				string,
+				{ sets: number; reps: number; weight: number }
+			> = {};
+			exercises.forEach((exercise) => {
+				initialValues[exercise.id] = {
+					sets: exercise.sets,
+					reps: exercise.reps,
+					weight: exercise.weight,
+				};
+			});
+			setExerciseValues(initialValues);
 		}
-	}, [exercises, session.currentExerciseIndex]);
+	}, [exercises]);
 
 	const updateValue = (field: "sets" | "reps" | "weight", delta: number) => {
-		setCurrentExerciseValues((prev) => ({
+		const currentExercise = exercises[session.currentExerciseIndex];
+		if (!currentExercise) return;
+
+		setExerciseValues((prev) => ({
 			...prev,
-			[field]: Math.max(0, prev[field] + delta),
+			[currentExercise.id]: {
+				...prev[currentExercise.id],
+				[field]: Math.max(0, (prev[currentExercise.id]?.[field] || 0) + delta),
+			},
 		}));
+	};
+
+	const goToPreviousExercise = () => {
+		if (session.currentExerciseIndex > 0) {
+			setSession((prev) => ({
+				...prev,
+				currentExerciseIndex: prev.currentExerciseIndex - 1,
+			}));
+		}
+	};
+
+	const goToNextExercise = () => {
+		if (session.currentExerciseIndex < exercises.length - 1) {
+			setSession((prev) => ({
+				...prev,
+				currentExerciseIndex: prev.currentExerciseIndex + 1,
+			}));
+		}
+	};
+
+	const goToExercise = (index: number) => {
+		if (index >= 0 && index < exercises.length) {
+			setSession((prev) => ({
+				...prev,
+				currentExerciseIndex: index,
+			}));
+		}
+	};
+
+	const updateExercise = async () => {
+		if (!exercises.length) return;
+
+		const currentExercise = exercises[session.currentExerciseIndex];
+		if (!currentExercise) return;
+
+		const completed = session.completedExercises.find(c => c.exerciseId === currentExercise.id);
+		if (!completed) return;
+
+		const updatedPerformance = {
+			sets: exerciseValues[currentExercise.id]?.sets || currentExercise.sets,
+			reps: exerciseValues[currentExercise.id]?.reps || currentExercise.reps,
+			weight: exerciseValues[currentExercise.id]?.weight || currentExercise.weight,
+		};
+
+		try {
+			const response = await fetch(`/api/exercise-performances/${completed.performanceId}`, {
+				method: "PUT",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					workoutId: session.workoutId,
+					...updatedPerformance,
+				}),
+			});
+
+			if (!response.ok) {
+				const error = await response.text();
+				console.error("Failed to update exercise performance:", error);
+				alert(`Failed to update exercise performance: ${error}`);
+				return;
+			}
+
+			// Update local state
+			setSession(prev => ({
+				...prev,
+				completedExercises: prev.completedExercises.map(c => 
+					c.exerciseId === currentExercise.id 
+						? { ...c, ...updatedPerformance }
+						: c
+				)
+			}));
+
+			// Move to next exercise
+			if (session.currentExerciseIndex < exercises.length - 1) {
+				setSession(prev => ({
+					...prev,
+					currentExerciseIndex: prev.currentExerciseIndex + 1,
+				}));
+			}
+		} catch (error) {
+			console.error("Error updating exercise:", error);
+			alert("Failed to update exercise");
+		}
 	};
 
 	const completeExercise = async () => {
@@ -113,9 +212,10 @@ export function ActiveWorkoutPage() {
 			exerciseId: currentExercise.id,
 			startTime: session.exerciseStartTime || now,
 			endTime: now,
-			sets: currentExerciseValues.sets,
-			reps: currentExerciseValues.reps,
-			weight: currentExerciseValues.weight,
+			sets: exerciseValues[currentExercise.id]?.sets || currentExercise.sets,
+			reps: exerciseValues[currentExercise.id]?.reps || currentExercise.reps,
+			weight:
+				exerciseValues[currentExercise.id]?.weight || currentExercise.weight,
 		};
 
 		// Save exercise performance
@@ -138,9 +238,14 @@ export function ActiveWorkoutPage() {
 			return;
 		}
 
+		const savedPerformance = await response.json();
+
 		const updatedSession = {
 			...session,
-			completedExercises: [...session.completedExercises, performance],
+			completedExercises: [...session.completedExercises, {
+				...performance,
+				performanceId: savedPerformance.id
+			}],
 		};
 
 		if (session.currentExerciseIndex < exercises.length - 1) {
@@ -243,6 +348,27 @@ export function ActiveWorkoutPage() {
 						</div>
 					</div>
 
+					<div className="flex gap-2 mb-4">
+						<Button
+							variant="outline"
+							onClick={goToPreviousExercise}
+							disabled={session.currentExerciseIndex === 0}
+							className="flex-1 h-11"
+						>
+							<ChevronLeft size={16} />
+							Previous
+						</Button>
+						<Button
+							variant="outline"
+							onClick={goToNextExercise}
+							disabled={session.currentExerciseIndex === exercises.length - 1}
+							className="flex-1 h-11"
+						>
+							Next
+							<ChevronRight size={16} />
+						</Button>
+					</div>
+
 					<Card className="mb-6">
 						<CardHeader>
 							<CardTitle className="text-2xl">{currentExercise.name}</CardTitle>
@@ -264,7 +390,8 @@ export function ActiveWorkoutPage() {
 											<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
 										</Button>
 										<div className="text-2xl font-bold">
-											{currentExerciseValues.sets}
+											{exerciseValues[currentExercise.id]?.sets ||
+												currentExercise.sets}
 										</div>
 										<Button
 											variant="ghost"
@@ -288,7 +415,8 @@ export function ActiveWorkoutPage() {
 											<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
 										</Button>
 										<div className="text-2xl font-bold">
-											{currentExerciseValues.reps}
+											{exerciseValues[currentExercise.id]?.reps ||
+												currentExercise.reps}
 										</div>
 										<Button
 											variant="ghost"
@@ -312,7 +440,8 @@ export function ActiveWorkoutPage() {
 											<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
 										</Button>
 										<div className="text-2xl font-bold">
-											{currentExerciseValues.weight}
+											{exerciseValues[currentExercise.id]?.weight ||
+												currentExercise.weight}
 											<small className="text-sm font-normal">kg</small>
 										</div>
 										<Button
@@ -327,10 +456,22 @@ export function ActiveWorkoutPage() {
 									<div className="text-sm text-gray-600 mt-2">Weight</div>
 								</div>
 							</div>
-							<Button onClick={completeExercise} className="w-full" size="lg">
-								<CheckCircle size={20} />
-								Complete Exercise
-							</Button>
+							{(() => {
+								const isCompleted = session.completedExercises.some(c => c.exerciseId === currentExercise.id);
+								const isLastExercise = session.currentExerciseIndex === exercises.length - 1;
+								
+								return isCompleted ? (
+									<Button onClick={updateExercise} className="w-full" size="lg">
+										<Edit size={20} />
+										Update Exercise
+									</Button>
+								) : (
+									<Button onClick={completeExercise} className="w-full" size="lg">
+										<CheckCircle size={20} />
+										{isLastExercise ? "Complete Workout" : "Complete Exercise"}
+									</Button>
+								);
+							})()}
 						</CardContent>
 					</Card>
 
@@ -341,60 +482,122 @@ export function ActiveWorkoutPage() {
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-3">
-								{/* Completed exercises */}
-								{session.completedExercises.map((completed) => {
-									const exercise = exercises.find(
-										(e) => e.id === completed.exerciseId,
+								{exercises.map((exercise, index) => {
+									const isCompleted = session.completedExercises.some(
+										(c) => c.exerciseId === exercise.id,
 									);
-									const duration = Math.round(
-										(completed.endTime.getTime() -
-											completed.startTime.getTime()) /
-											1000,
-									);
-									return (
-										<div
-											key={`completed-${completed.exerciseId}-${completed.startTime.getTime()}`}
-											className="flex items-center gap-3"
-										>
-											<div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
-											<div className="flex-1 p-2 bg-green-50 rounded border-l-2 border-green-200">
-												<div className="font-medium text-green-800">
-													{exercise?.name}
-												</div>
-												<div className="text-xs text-green-600">
-													{formatMuscleGroup(exercise?.group || "")} •{" "}
-													{completed.sets}×{completed.reps} @ {completed.weight}
-													kg • {duration}s
+									const isCurrent = index === session.currentExerciseIndex;
+									const isPassed = index < session.currentExerciseIndex;
+
+									if (isCompleted) {
+										const completed = session.completedExercises.find(
+											(c) => c.exerciseId === exercise.id,
+										);
+										const duration = completed
+											? Math.round(
+													(completed.endTime.getTime() -
+														completed.startTime.getTime()) /
+														1000,
+												)
+											: 0;
+										return (
+											<div
+												key={`completed-${exercise.id}`}
+												className="flex items-center gap-3"
+											>
+												<div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
+												<div
+													className="flex-1 p-2 bg-green-50 rounded border-l-2 border-green-200 cursor-pointer hover:bg-green-100 transition-colors"
+													onClick={() => goToExercise(index)}
+													onKeyDown={(e) =>
+														e.key === "Enter" && goToExercise(index)
+													}
+													role="button"
+													tabIndex={0}
+												>
+													<div className="font-medium text-green-800">
+														{exercise.name}
+													</div>
+													<div className="text-xs text-green-600">
+														{formatMuscleGroup(exercise.group)} •{" "}
+														{completed?.sets}×{completed?.reps} @{" "}
+														{completed?.weight}kg • {duration}s
+													</div>
 												</div>
 											</div>
-										</div>
-									);
-								})}
+										);
+									}
 
-								{/* Current exercise */}
-								<div className="flex items-center gap-3">
-									<div className="w-4 h-4 bg-blue-500 rounded-full flex-shrink-0 animate-pulse"></div>
-									<div className="flex-1 p-3 bg-blue-50 rounded border-l-4 border-blue-500">
-										<div className="font-bold text-blue-800">
-											{currentExercise.name}
-										</div>
-										<div className="text-sm text-blue-600">
-											{formatMuscleGroup(currentExercise.group)} • Current
-											Exercise
-										</div>
-									</div>
-								</div>
+									if (isCurrent) {
+										return (
+											<div
+												key={`current-${exercise.id}`}
+												className="flex items-center gap-3"
+											>
+												<div className="w-4 h-4 bg-blue-500 rounded-full flex-shrink-0 animate-pulse"></div>
+												<div
+													className="flex-1 p-3 bg-blue-50 rounded border-l-4 border-blue-500 cursor-pointer hover:bg-blue-100 transition-colors"
+													onClick={() => goToExercise(index)}
+													onKeyDown={(e) =>
+														e.key === "Enter" && goToExercise(index)
+													}
+													role="button"
+													tabIndex={0}
+												>
+													<div className="font-bold text-blue-800">
+														{exercise.name}
+													</div>
+													<div className="text-sm text-blue-600">
+														{formatMuscleGroup(exercise.group)} • Current
+														Exercise
+													</div>
+												</div>
+											</div>
+										);
+									}
 
-								{/* Next exercises */}
-								{exercises
-									.slice(session.currentExerciseIndex + 1)
-									.map((exercise) => (
+									if (isPassed) {
+										return (
+											<div
+												key={`passed-${exercise.id}`}
+												className="flex items-center gap-3"
+											>
+												<div className="w-3 h-3 bg-yellow-500 rounded-full flex-shrink-0"></div>
+												<div
+													className="flex-1 p-2 bg-yellow-50 rounded border-l-2 border-yellow-200 cursor-pointer hover:bg-yellow-100 transition-colors"
+													onClick={() => goToExercise(index)}
+													onKeyDown={(e) =>
+														e.key === "Enter" && goToExercise(index)
+													}
+													role="button"
+													tabIndex={0}
+												>
+													<div className="font-medium text-yellow-800">
+														{exercise.name}
+													</div>
+													<div className="text-xs text-yellow-600">
+														{formatMuscleGroup(exercise.group)} • Skipped
+													</div>
+												</div>
+											</div>
+										);
+									}
+
+									return (
 										<div
 											key={`next-${exercise.id}`}
 											className="flex items-center gap-3"
 										>
 											<div className="w-2 h-2 bg-gray-300 rounded-full flex-shrink-0"></div>
-											<div className="flex-1 p-2 bg-gray-50 rounded border-l-2 border-gray-200">
+											<div
+												className="flex-1 p-2 bg-gray-50 rounded border-l-2 border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+												onClick={() => goToExercise(index)}
+												onKeyDown={(e) =>
+													e.key === "Enter" && goToExercise(index)
+												}
+												role="button"
+												tabIndex={0}
+											>
 												<div className="font-medium text-gray-700">
 													{exercise.name}
 												</div>
@@ -404,7 +607,8 @@ export function ActiveWorkoutPage() {
 												</div>
 											</div>
 										</div>
-									))}
+									);
+								})}
 							</div>
 						</CardContent>
 					</Card>

@@ -4,9 +4,10 @@ import type {
 	Program,
 	Workout,
 } from "@prisma/client";
-import { format } from "date-fns";
+import { format, formatDuration, intervalToDuration } from "date-fns";
 import useSWR from "swr";
 import { formatMuscleGroup } from "../lib/utils";
+import { WorkoutDurationChart } from "./WorkoutDurationChart";
 
 type PerformanceWithRelations = ExercisePerformance & {
 	exercise: Exercise;
@@ -91,16 +92,19 @@ export function StatisticsPage() {
 																					<span>{performance.reps} reps</span>
 																					<span>{performance.weight}kg</span>
 																					<span className="text-gray-600">
-																						{Math.round(
-																							(new Date(
-																								performance.endTime,
-																							).getTime() -
-																								new Date(
+																						{formatDuration(
+																							intervalToDuration({
+																								start: new Date(
 																									performance.startTime,
-																								).getTime()) /
-																								1000,
+																								),
+																								end: new Date(
+																									performance.endTime,
+																								),
+																							}),
+																							{
+																								format: ["minutes", "seconds"],
+																							},
 																						)}
-																						s
 																					</span>
 																				</div>
 																				<div className="text-gray-500">
@@ -126,6 +130,10 @@ export function StatisticsPage() {
 					)}
 				</div>
 			)}
+
+			<div className="mt-8">
+				<WorkoutDurationChart />
+			</div>
 		</div>
 	);
 }

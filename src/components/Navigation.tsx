@@ -47,7 +47,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
 							<NavigationMenuLink asChild>
 								<Link to="/" className={getLinkClassName("/")}>
 									<Dumbbell
-										size={16}
+										className="!h-4 !w-4"
 										fill={isActive("/") ? "currentColor" : "none"}
 									/>
 									Workout
@@ -58,7 +58,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
 							<NavigationMenuLink asChild>
 								<Link to="/programs" className={getLinkClassName("/programs")}>
 									<Calendar
-										size={16}
+										className="!h-4 !w-4"
 										fill={isActive("/programs") ? "currentColor" : "none"}
 									/>
 									Programs
@@ -72,7 +72,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
 									className={getLinkClassName("/statistics")}
 								>
 									<BarChart3
-										size={16}
+										className="!h-4 !w-4"
 										fill={isActive("/statistics") ? "currentColor" : "none"}
 									/>
 									Statistics
@@ -83,7 +83,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
 							<NavigationMenuLink asChild>
 								<Link to="/tools/weight" className={getLinkClassName("/tools")}>
 									<Settings
-										size={16}
+										className="!h-4 !w-4"
 										fill={isActive("/tools") ? "currentColor" : "none"}
 									/>
 									Tools

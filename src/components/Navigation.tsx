@@ -23,6 +23,9 @@ export function Navigation({ user, onLogout }: NavigationProps) {
 				location.pathname === "/" || location.pathname.startsWith("/workout")
 			);
 		}
+		if (path === "/tools") {
+			return location.pathname.startsWith("/tools");
+		}
 		return location.pathname === path;
 	};
 
@@ -78,7 +81,7 @@ export function Navigation({ user, onLogout }: NavigationProps) {
 						</NavigationMenuItem>
 						<NavigationMenuItem className="flex-1">
 							<NavigationMenuLink asChild>
-								<Link to="/tools" className={getLinkClassName("/tools")}>
+								<Link to="/tools/weight" className={getLinkClassName("/tools")}>
 									<Settings
 										size={16}
 										fill={isActive("/tools") ? "currentColor" : "none"}

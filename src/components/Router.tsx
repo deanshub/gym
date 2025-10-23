@@ -82,7 +82,7 @@ export function Router() {
 					<Route path="/workout/:programId" element={<ActiveWorkoutPage />} />
 					<Route path="/programs" element={<ProgramsPage />} />
 					<Route path="/statistics" element={<StatisticsPage />} />
-					<Route path="/tools" element={<ToolsPage />} />
+					<Route path="/tools/:tool" element={<ToolsPage />} />
 				</Routes>
 			</div>
 		</BrowserRouter>

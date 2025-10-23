@@ -2,6 +2,14 @@ import { Camera, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
 import { Button } from "./ui/button";
+import { Card, CardContent } from "./ui/card";
+import {
+	Carousel,
+	CarouselContent,
+	CarouselItem,
+	CarouselNext,
+	CarouselPrevious,
+} from "./ui/carousel";
 import { Input } from "./ui/input";
 
 interface ProgressPhoto {
@@ -203,22 +211,30 @@ export function ProgressPhotos() {
 					<h4 className="font-medium mb-4">
 						Your Progress ({photos.length} photos)
 					</h4>
-					<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-						{photos.map((photo) => (
-							<div key={photo.id} className="space-y-2">
-								<div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-									<img
-										src={`/api${photo.filepath}`}
-										alt={`Progress from ${new Date(photo.createdAt).toLocaleDateString()}`}
-										className="w-full h-full object-cover"
-									/>
-								</div>
-								<p className="text-xs text-gray-600 text-center">
-									{new Date(photo.createdAt).toLocaleDateString()}
-								</p>
-							</div>
-						))}
-					</div>
+					<Carousel className="w-full max-w-sm mx-auto">
+						<CarouselContent>
+							{photos.map((photo) => (
+								<CarouselItem key={photo.id}>
+									<div className="p-1">
+										<Card>
+											<CardContent className="flex aspect-square items-center justify-center p-0">
+												<img
+													src={`/api${photo.filepath}`}
+													alt={`Progress from ${new Date(photo.createdAt).toLocaleDateString()}`}
+													className="w-full h-full object-cover rounded-lg"
+												/>
+											</CardContent>
+										</Card>
+									</div>
+									<p className="text-xs text-gray-600 text-center mt-2">
+										{new Date(photo.createdAt).toLocaleDateString()}
+									</p>
+								</CarouselItem>
+							))}
+						</CarouselContent>
+						<CarouselPrevious />
+						<CarouselNext />
+					</Carousel>
 				</div>
 			)}
 

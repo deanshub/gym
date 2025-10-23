@@ -28,7 +28,6 @@ export function WorkoutPage() {
 
 	return (
 		<div className="flex-1 p-4">
-			<h2 className="text-xl font-bold mb-4">Start Workout</h2>
 			<div className="grid gap-4">
 				{programs.map((program) => (
 					<Suspense

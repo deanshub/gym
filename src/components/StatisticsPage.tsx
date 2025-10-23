@@ -6,7 +6,7 @@ import type {
 } from "@prisma/client";
 import { format, formatDuration, intervalToDuration } from "date-fns";
 import useSWR from "swr";
-import { formatMuscleGroup } from "../lib/utils";
+import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
 import { WorkoutDurationChart } from "./WorkoutDurationChart";
 
 type PerformanceWithRelations = ExercisePerformance & {
@@ -46,8 +46,6 @@ export function StatisticsPage() {
 
 	return (
 		<div className="flex-1 p-4">
-			<h2 className="text-xl font-bold mb-4">Statistics</h2>
-
 			{performances.length === 0 ? (
 				<p className="text-gray-600">
 					No workout data yet. Complete some workouts to see statistics!
@@ -84,14 +82,24 @@ export function StatisticsPage() {
 																	{exercisePerformances.map((performance) => (
 																		<div
 																			key={performance.id}
-																			className="p-2 bg-white rounded text-sm"
+																			className="p-2 rounded text-sm bg-secondary/50"
 																		>
 																			<div className="flex justify-between items-center">
 																				<div className="flex gap-4">
-																					<span>{performance.sets} sets</span>
-																					<span>{performance.reps} reps</span>
-																					<span>{performance.weight}kg</span>
-																					<span className="text-gray-600">
+																					<span className="text-center">
+																						{performance.sets} sets
+																					</span>
+																					<span className="text-center">
+																						{performance.reps} reps
+																					</span>
+																					<span className="text-center flex flex-col items-center">
+																						{getWeightTypeIcon(
+																							performance.exercise.weightType,
+																							12,
+																						)}
+																						{performance.weight}kg
+																					</span>
+																					<span className="text-center text-gray-600">
 																						{formatDuration(
 																							intervalToDuration({
 																								start: new Date(
@@ -110,7 +118,7 @@ export function StatisticsPage() {
 																				<div className="text-gray-500">
 																					{format(
 																						new Date(performance.startTime),
-																						"MMM d, yyyy",
+																						"MMM d",
 																					)}
 																				</div>
 																			</div>

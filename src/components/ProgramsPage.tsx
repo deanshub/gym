@@ -211,7 +211,7 @@ export function ProgramsPage() {
 			) : (
 				<>
 					<div className="flex justify-between items-center mb-4">
-						<h2 className="text-xl font-bold">Programs</h2>
+						<span />
 						<Button onClick={() => openDialog("create")}>
 							<Plus size={16} />
 							Add Program

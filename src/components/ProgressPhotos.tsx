@@ -139,7 +139,6 @@ export function ProgressPhotos() {
 						<Input
 							type="file"
 							accept="image/*"
-							capture="environment"
 							onChange={handleFileUpload}
 							disabled={isUploading}
 							className="flex-1"

@@ -152,24 +152,30 @@ export function ActiveWorkoutPage() {
 		const currentExercise = exercises[session.currentExerciseIndex];
 		if (!currentExercise) return;
 
-		const completed = session.completedExercises.find(c => c.exerciseId === currentExercise.id);
+		const completed = session.completedExercises.find(
+			(c) => c.exerciseId === currentExercise.id,
+		);
 		if (!completed) return;
 
 		const updatedPerformance = {
 			sets: exerciseValues[currentExercise.id]?.sets || currentExercise.sets,
 			reps: exerciseValues[currentExercise.id]?.reps || currentExercise.reps,
-			weight: exerciseValues[currentExercise.id]?.weight || currentExercise.weight,
+			weight:
+				exerciseValues[currentExercise.id]?.weight || currentExercise.weight,
 		};
 
 		try {
-			const response = await fetch(`/api/exercise-performances/${completed.performanceId}`, {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					workoutId: session.workoutId,
-					...updatedPerformance,
-				}),
-			});
+			const response = await fetch(
+				`/api/exercise-performances/${completed.performanceId}`,
+				{
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						workoutId: session.workoutId,
+						...updatedPerformance,
+					}),
+				},
+			);
 
 			if (!response.ok) {
 				const error = await response.text();
@@ -179,18 +185,18 @@ export function ActiveWorkoutPage() {
 			}
 
 			// Update local state
-			setSession(prev => ({
+			setSession((prev) => ({
 				...prev,
-				completedExercises: prev.completedExercises.map(c => 
-					c.exerciseId === currentExercise.id 
+				completedExercises: prev.completedExercises.map((c) =>
+					c.exerciseId === currentExercise.id
 						? { ...c, ...updatedPerformance }
-						: c
-				)
+						: c,
+				),
 			}));
 
 			// Move to next exercise
 			if (session.currentExerciseIndex < exercises.length - 1) {
-				setSession(prev => ({
+				setSession((prev) => ({
 					...prev,
 					currentExerciseIndex: prev.currentExerciseIndex + 1,
 				}));
@@ -242,10 +248,13 @@ export function ActiveWorkoutPage() {
 
 		const updatedSession = {
 			...session,
-			completedExercises: [...session.completedExercises, {
-				...performance,
-				performanceId: savedPerformance.id
-			}],
+			completedExercises: [
+				...session.completedExercises,
+				{
+					...performance,
+					performanceId: savedPerformance.id,
+				},
+			],
 		};
 
 		if (session.currentExerciseIndex < exercises.length - 1) {
@@ -457,16 +466,23 @@ export function ActiveWorkoutPage() {
 								</div>
 							</div>
 							{(() => {
-								const isCompleted = session.completedExercises.some(c => c.exerciseId === currentExercise.id);
-								const isLastExercise = session.currentExerciseIndex === exercises.length - 1;
-								
+								const isCompleted = session.completedExercises.some(
+									(c) => c.exerciseId === currentExercise.id,
+								);
+								const isLastExercise =
+									session.currentExerciseIndex === exercises.length - 1;
+
 								return isCompleted ? (
 									<Button onClick={updateExercise} className="w-full" size="lg">
 										<Edit size={20} />
 										Update Exercise
 									</Button>
 								) : (
-									<Button onClick={completeExercise} className="w-full" size="lg">
+									<Button
+										onClick={completeExercise}
+										className="w-full"
+										size="lg"
+									>
 										<CheckCircle size={20} />
 										{isLastExercise ? "Complete Workout" : "Complete Exercise"}
 									</Button>

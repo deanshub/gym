@@ -68,16 +68,16 @@ export const exercisePerformancesRoutes = {
 		async PUT(req: Request) {
 			const userId = getCurrentUserId(req);
 			const url = new URL(req.url);
-			const performanceId = url.pathname.split('/').pop();
+			const performanceId = url.pathname.split("/").pop();
 			const { sets, reps, weight } = await req.json();
 
 			// Update the performance
 			const updatedPerformance = await prisma.exercisePerformance.update({
-				where: { 
+				where: {
 					id: performanceId,
-					userId 
+					userId,
 				},
-				data: { sets, reps, weight }
+				data: { sets, reps, weight },
 			});
 
 			return Response.json(updatedPerformance);

@@ -1,6 +1,5 @@
 const CACHE_NAME = 'gym-tracker-v1';
 const urlsToCache = [
-  '/',
   '/manifest.json'
 ];
 

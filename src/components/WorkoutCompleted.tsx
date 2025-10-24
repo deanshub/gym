@@ -1,5 +1,5 @@
 import type { Program } from "@prisma/client";
-import { Button } from "./ui/button";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 interface WorkoutCompletedProps {
@@ -71,15 +71,19 @@ export function WorkoutCompleted({
 				</CardContent>
 			</Card>
 
-			<Button
-				onClick={() => {
-					window.location.href = "/";
-				}}
-				size="lg"
-				className="w-full max-w-md"
+			<Link
+				to="/"
+				className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-md py-2 block"
 			>
 				Back to Home
-			</Button>
+			</Link>
+
+			<Link
+				to="/statistics"
+				className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-md py-2 block border"
+			>
+				View Statistics
+			</Link>
 		</div>
 	);
 }

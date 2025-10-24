@@ -14,6 +14,8 @@ import useSWR from "swr";
 import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Input } from "./ui/input";
 import { WorkoutCompleted } from "./WorkoutCompleted";
 
 interface WorkoutSession {
@@ -53,6 +55,11 @@ export function ActiveWorkoutPage() {
 	});
 
 	const [elapsedTime, setElapsedTime] = useState(0);
+	const [editDialog, setEditDialog] = useState<{
+		open: boolean;
+		field: "sets" | "reps" | "weight" | null;
+		value: string;
+	}>({ open: false, field: null, value: "" });
 
 	// Timer effect
 	useEffect(() => {
@@ -117,6 +124,35 @@ export function ActiveWorkoutPage() {
 				[field]: Math.max(0, (prev[currentExercise.id]?.[field] || 0) + delta),
 			},
 		}));
+	};
+
+	const openEditDialog = (field: "sets" | "reps" | "weight") => {
+		const currentExercise = exercises[session.currentExerciseIndex];
+		if (!currentExercise) return;
+
+		const currentValue = exerciseValues[currentExercise.id]?.[field] || 0;
+		setEditDialog({
+			open: true,
+			field,
+			value: currentValue.toString(),
+		});
+	};
+
+	const saveEditValue = () => {
+		const currentExercise = exercises[session.currentExerciseIndex];
+		if (!currentExercise || !editDialog.field) return;
+
+		const newValue = Math.max(0, Number(editDialog.value) || 0);
+		const field = editDialog.field;
+		setExerciseValues((prev) => ({
+			...prev,
+			[currentExercise.id]: {
+				...prev[currentExercise.id],
+				[field]: newValue,
+			},
+		}));
+
+		setEditDialog({ open: false, field: null, value: "" });
 	};
 
 	const goToPreviousExercise = () => {
@@ -323,6 +359,44 @@ export function ActiveWorkoutPage() {
 
 	return (
 		<div className="flex-1 p-4">
+			<Dialog
+				open={editDialog.open}
+				onOpenChange={(open) => setEditDialog({ open, field: null, value: "" })}
+			>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Edit {editDialog.field}</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-4">
+						<Input
+							type="number"
+							value={editDialog.value}
+							onChange={(e) =>
+								setEditDialog((prev) => ({ ...prev, value: e.target.value }))
+							}
+							placeholder={`Enter ${editDialog.field}`}
+							min="0"
+							autoFocus
+							onKeyDown={(e) => e.key === "Enter" && saveEditValue()}
+						/>
+						<div className="flex gap-2">
+							<Button
+								variant="outline"
+								onClick={() =>
+									setEditDialog({ open: false, field: null, value: "" })
+								}
+								className="flex-1"
+							>
+								Cancel
+							</Button>
+							<Button onClick={saveEditValue} className="flex-1">
+								Save
+							</Button>
+						</div>
+					</div>
+				</DialogContent>
+			</Dialog>
+
 			{session.workoutCompleted ? (
 				<WorkoutCompleted
 					program={program}
@@ -398,10 +472,14 @@ export function ActiveWorkoutPage() {
 										>
 											<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
 										</Button>
-										<div className="text-2xl font-bold">
+										<button
+											type="button"
+											onClick={() => openEditDialog("sets")}
+											className="text-2xl font-bold hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+										>
 											{exerciseValues[currentExercise.id]?.sets ||
 												currentExercise.sets}
-										</div>
+										</button>
 										<Button
 											variant="ghost"
 											size="sm"
@@ -423,10 +501,14 @@ export function ActiveWorkoutPage() {
 										>
 											<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
 										</Button>
-										<div className="text-2xl font-bold">
+										<button
+											type="button"
+											onClick={() => openEditDialog("reps")}
+											className="text-2xl font-bold hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+										>
 											{exerciseValues[currentExercise.id]?.reps ||
 												currentExercise.reps}
-										</div>
+										</button>
 										<Button
 											variant="ghost"
 											size="sm"
@@ -448,11 +530,15 @@ export function ActiveWorkoutPage() {
 										>
 											<ChevronUp className="!w-8 !h-8" strokeWidth={2} />
 										</Button>
-										<div className="text-2xl font-bold">
+										<button
+											type="button"
+											onClick={() => openEditDialog("weight")}
+											className="text-2xl font-bold hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+										>
 											{exerciseValues[currentExercise.id]?.weight ||
 												currentExercise.weight}
 											<small className="text-sm font-normal">kg</small>
-										</div>
+										</button>
 										<Button
 											variant="ghost"
 											size="sm"

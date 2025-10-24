@@ -1,52 +1,53 @@
-import type {
-	Exercise,
-	ExercisePerformance,
-	Program,
-	Workout,
-} from "@prisma/client";
-import { format, formatDuration, intervalToDuration } from "date-fns";
-import useSWR from "swr";
-import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
+// import type {
+// 	Exercise,
+// 	ExercisePerformance,
+// 	Program,
+// 	Workout,
+// } from "@prisma/client";
+// import { format, formatDuration, intervalToDuration } from "date-fns";
+// import useSWR from "swr";
+// import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
+import { ExercisePerformanceChart } from "./ExercisePerformanceChart";
 import { WorkoutDurationChart } from "./WorkoutDurationChart";
 
-type PerformanceWithRelations = ExercisePerformance & {
-	exercise: Exercise;
-	workout: Workout & { program: Program };
-};
+// type PerformanceWithRelations = ExercisePerformance & {
+// 	exercise: Exercise;
+// 	workout: Workout & { program: Program };
+// };
 
 export function StatisticsPage() {
-	const { data: performances = [] } = useSWR<PerformanceWithRelations[]>(
-		"/api/exercise-performances",
-	);
+	// const { data: performances = [] } = useSWR<PerformanceWithRelations[]>(
+	// 	"/api/exercise-performances",
+	// );
 
 	// Group performances by muscle group, then by program, then by exercise
-	const performancesByMuscleGroup = performances.reduce(
-		(acc, performance) => {
-			const muscleGroup = performance.exercise.group;
-			const programName = performance.workout.program.name;
-			const exerciseName = performance.exercise.name;
+	// const performancesByMuscleGroup = performances.reduce(
+	// 	(acc, performance) => {
+	// 		const muscleGroup = performance.exercise.group;
+	// 		const programName = performance.workout.program.name;
+	// 		const exerciseName = performance.exercise.name;
 
-			if (!acc[muscleGroup]) {
-				acc[muscleGroup] = {};
-			}
-			if (!acc[muscleGroup][programName]) {
-				acc[muscleGroup][programName] = {};
-			}
-			if (!acc[muscleGroup][programName][exerciseName]) {
-				acc[muscleGroup][programName][exerciseName] = [];
-			}
-			acc[muscleGroup][programName][exerciseName].push(performance);
-			return acc;
-		},
-		{} as Record<
-			string,
-			Record<string, Record<string, PerformanceWithRelations[]>>
-		>,
-	);
+	// 		if (!acc[muscleGroup]) {
+	// 			acc[muscleGroup] = {};
+	// 		}
+	// 		if (!acc[muscleGroup][programName]) {
+	// 			acc[muscleGroup][programName] = {};
+	// 		}
+	// 		if (!acc[muscleGroup][programName][exerciseName]) {
+	// 			acc[muscleGroup][programName][exerciseName] = [];
+	// 		}
+	// 		acc[muscleGroup][programName][exerciseName].push(performance);
+	// 		return acc;
+	// 	},
+	// 	{} as Record<
+	// 		string,
+	// 		Record<string, Record<string, PerformanceWithRelations[]>>
+	// 	>,
+	// );
 
 	return (
-		<div className="flex-1 p-4">
-			{performances.length === 0 ? (
+		<div className="flex-1 p-4 pt-0">
+			{/* {performances.length === 0 ? (
 				<p className="text-gray-600">
 					No workout data yet. Complete some workouts to see statistics!
 				</p>
@@ -137,9 +138,10 @@ export function StatisticsPage() {
 						),
 					)}
 				</div>
-			)}
+			)} */}
 
-			<div className="mt-8">
+			<div className="mt-8 space-y-8">
+				<ExercisePerformanceChart />
 				<WorkoutDurationChart />
 			</div>
 		</div>

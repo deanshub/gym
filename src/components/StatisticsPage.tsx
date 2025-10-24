@@ -8,6 +8,7 @@
 // import useSWR from "swr";
 // import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
 import { ExercisePerformanceChart } from "./ExercisePerformanceChart";
+import { StrengthRadarChart } from "./StrengthRadarChart";
 import { WorkoutDurationChart } from "./WorkoutDurationChart";
 
 // type PerformanceWithRelations = ExercisePerformance & {
@@ -141,6 +142,7 @@ export function StatisticsPage() {
 			)} */}
 
 			<div className="mt-8 space-y-8">
+				<StrengthRadarChart />
 				<ExercisePerformanceChart />
 				<WorkoutDurationChart />
 			</div>

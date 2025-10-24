@@ -1,147 +1,188 @@
-// import type {
-// 	Exercise,
-// 	ExercisePerformance,
-// 	Program,
-// 	Workout,
-// } from "@prisma/client";
-// import { format, formatDuration, intervalToDuration } from "date-fns";
-// import useSWR from "swr";
-// import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
+import { Download } from "lucide-react";
+import useSWR from "swr";
 import { ExercisePerformanceChart } from "./ExercisePerformanceChart";
 import { StrengthRadarChart } from "./StrengthRadarChart";
+import { Button } from "./ui/button";
 import { WorkoutDurationChart } from "./WorkoutDurationChart";
 
-// type PerformanceWithRelations = ExercisePerformance & {
-// 	exercise: Exercise;
-// 	workout: Workout & { program: Program };
-// };
+interface WeightEntry {
+	id: string;
+	weight: number;
+	createdAt: string;
+}
+
+interface ExercisePerformance {
+	id: string;
+	exerciseId: string;
+	workoutId: string;
+	sets: number;
+	reps: number;
+	weight: number;
+	startTime: string;
+	endTime: string;
+	exercise: {
+		name: string;
+		group: string;
+	};
+	workout: {
+		program: {
+			name: string;
+		};
+	};
+}
+
+interface Exercise {
+	id: string;
+	name: string;
+	sets: number;
+	reps: number;
+	weight: number;
+	group: string;
+	weightType: string;
+	programId: string;
+}
+
+interface Program {
+	id: string;
+	name: string;
+	createdAt: string;
+}
 
 export function StatisticsPage() {
-	// const { data: performances = [] } = useSWR<PerformanceWithRelations[]>(
-	// 	"/api/exercise-performances",
-	// );
+	const { data: weightEntries = [] } =
+		useSWR<WeightEntry[]>("/api/weight-logs");
+	const { data: exercisePerformances = [] } = useSWR<ExercisePerformance[]>(
+		"/api/exercise-performances",
+	);
+	const { data: programs = [] } = useSWR<Program[]>("/api/programs");
 
-	// Group performances by muscle group, then by program, then by exercise
-	// const performancesByMuscleGroup = performances.reduce(
-	// 	(acc, performance) => {
-	// 		const muscleGroup = performance.exercise.group;
-	// 		const programName = performance.workout.program.name;
-	// 		const exerciseName = performance.exercise.name;
+	const exportPrograms = async () => {
+		const csvData = [
+			[
+				"Program",
+				"Exercise",
+				"Muscle Group",
+				"Sets",
+				"Reps",
+				"Weight (kg)",
+				"Weight Type",
+				"Created Date",
+			],
+		];
 
-	// 		if (!acc[muscleGroup]) {
-	// 			acc[muscleGroup] = {};
-	// 		}
-	// 		if (!acc[muscleGroup][programName]) {
-	// 			acc[muscleGroup][programName] = {};
-	// 		}
-	// 		if (!acc[muscleGroup][programName][exerciseName]) {
-	// 			acc[muscleGroup][programName][exerciseName] = [];
-	// 		}
-	// 		acc[muscleGroup][programName][exerciseName].push(performance);
-	// 		return acc;
-	// 	},
-	// 	{} as Record<
-	// 		string,
-	// 		Record<string, Record<string, PerformanceWithRelations[]>>
-	// 	>,
-	// );
+		for (const program of programs) {
+			try {
+				const response = await fetch(`/api/programs/${program.id}/exercises`);
+				const exercises = await response.json();
+
+				exercises.forEach((exercise: Exercise) => {
+					csvData.push([
+						program.name,
+						exercise.name,
+						exercise.group,
+						exercise.sets.toString(),
+						exercise.reps.toString(),
+						exercise.weight.toString(),
+						exercise.weightType,
+						program.createdAt.split("T")[0],
+					]);
+				});
+			} catch (error) {
+				console.error(
+					`Failed to fetch exercises for program ${program.id}:`,
+					error,
+				);
+			}
+		}
+
+		downloadCSV(csvData, "programs");
+	};
+
+	const exportPerformances = () => {
+		const csvData = [
+			[
+				"Date",
+				"Program",
+				"Exercise",
+				"Muscle Group",
+				"Sets",
+				"Reps",
+				"Weight (kg)",
+				"Duration (min)",
+			],
+		];
+
+		exercisePerformances.forEach((perf) => {
+			const duration = Math.round(
+				(new Date(perf.endTime).getTime() -
+					new Date(perf.startTime).getTime()) /
+					60000,
+			);
+			const date = new Date(perf.startTime).toISOString().split("T")[0];
+
+			csvData.push([
+				date,
+				perf.workout.program.name,
+				perf.exercise.name,
+				perf.exercise.group,
+				perf.sets.toString(),
+				perf.reps.toString(),
+				perf.weight.toString(),
+				duration.toString(),
+			]);
+		});
+
+		downloadCSV(csvData, "performances");
+	};
+
+	const exportWeight = () => {
+		const csvData = [["Date", "Weight (kg)"]];
+
+		weightEntries.forEach((entry) => {
+			csvData.push([entry.createdAt.split("T")[0], entry.weight.toString()]);
+		});
+
+		downloadCSV(csvData, "weight");
+	};
+
+	const downloadCSV = (csvData: (string | number)[][], type: string) => {
+		const csvString = csvData
+			.map((row) => row.map((field) => `"${field}"`).join(","))
+			.join("\n");
+
+		const blob = new Blob([csvString], { type: "text/csv" });
+		const url = window.URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `gym-${type}-${new Date().toISOString().split("T")[0]}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		window.URL.revokeObjectURL(url);
+	};
 
 	return (
 		<div className="flex-1 p-4 pt-0">
-			{/* {performances.length === 0 ? (
-				<p className="text-gray-600">
-					No workout data yet. Complete some workouts to see statistics!
-				</p>
-			) : (
-				<div className="space-y-6">
-					{Object.entries(performancesByMuscleGroup).map(
-						([muscleGroup, programs]) => (
-							<div key={muscleGroup} className="border rounded-lg p-4">
-								<h3 className="text-lg font-semibold mb-4">
-									{formatMuscleGroup(muscleGroup)}
-								</h3>
-								<div className="space-y-4">
-									{Object.entries(programs).map(
-										([programName, exerciseGroups]) => (
-											<div
-												key={programName}
-												className="border-l-4 border-blue-200 pl-4"
-											>
-												<h4 className="text-md font-medium mb-3 text-blue-700">
-													{programName}
-												</h4>
-												<div className="space-y-3">
-													{Object.entries(exerciseGroups).map(
-														([exerciseName, exercisePerformances]) => (
-															<div
-																key={exerciseName}
-																className="bg-gray-50 rounded p-3"
-															>
-																<h5 className="font-medium mb-3">
-																	{exerciseName}
-																</h5>
-																<div className="space-y-2">
-																	{exercisePerformances.map((performance) => (
-																		<div
-																			key={performance.id}
-																			className="p-2 rounded text-sm bg-secondary/50"
-																		>
-																			<div className="flex justify-between items-center">
-																				<div className="flex gap-4">
-																					<span className="text-center">
-																						{performance.sets} sets
-																					</span>
-																					<span className="text-center">
-																						{performance.reps} reps
-																					</span>
-																					<span className="text-center flex flex-col items-center">
-																						{getWeightTypeIcon(
-																							performance.exercise.weightType,
-																							12,
-																						)}
-																						{performance.weight}kg
-																					</span>
-																					<span className="text-center text-gray-600">
-																						{formatDuration(
-																							intervalToDuration({
-																								start: new Date(
-																									performance.startTime,
-																								),
-																								end: new Date(
-																									performance.endTime,
-																								),
-																							}),
-																							{
-																								format: ["minutes", "seconds"],
-																							},
-																						)}
-																					</span>
-																				</div>
-																				<div className="text-gray-500">
-																					{format(
-																						new Date(performance.startTime),
-																						"MMM d",
-																					)}
-																				</div>
-																			</div>
-																		</div>
-																	))}
-																</div>
-															</div>
-														),
-													)}
-												</div>
-											</div>
-										),
-									)}
-								</div>
-							</div>
-						),
-					)}
-				</div>
-			)} */}
+			<div className="py-4">
+				<h1 className="text-2xl font-bold">Statistics</h1>
+			</div>
 
-			<div className="mt-8 space-y-8">
+			<div className="flex gap-2 pb-4">
+				<Button onClick={exportPrograms} variant="outline" size="sm">
+					<Download className="mr-2 h-4 w-4" />
+					Programs
+				</Button>
+				<Button onClick={exportPerformances} variant="outline" size="sm">
+					<Download className="mr-2 h-4 w-4" />
+					Performances
+				</Button>
+				<Button onClick={exportWeight} variant="outline" size="sm">
+					<Download className="mr-2 h-4 w-4" />
+					Weight
+				</Button>
+			</div>
+
+			<div className="space-y-4">
 				<StrengthRadarChart />
 				<ExercisePerformanceChart />
 				<WorkoutDurationChart />

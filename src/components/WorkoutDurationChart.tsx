@@ -51,11 +51,11 @@ export function WorkoutDurationChart() {
 	const programs = Array.from(new Set(workouts.map((w) => w.program.name)));
 	const chartConfig: ChartConfig = programs.reduce((config, program, index) => {
 		const colors = [
-			"hsl(var(--chart-1))",
-			"hsl(var(--chart-2))",
-			"hsl(var(--chart-3))",
-			"hsl(var(--chart-4))",
-			"hsl(var(--chart-5))",
+			"var(--chart-1)",
+			"var(--chart-2)",
+			"var(--chart-3)",
+			"var(--chart-4)",
+			"var(--chart-5)",
 		];
 		config[program] = {
 			label: program,

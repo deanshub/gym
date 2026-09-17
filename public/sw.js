@@ -1,22 +1,27 @@
-// Service worker: app-shell caching so the PWA boots offline, plus the existing
-// push-notification handlers. Data reads are served from the app's IndexedDB
-// SWR cache (not here), and writes are queued by the app-layer sync engine, so
-// this worker only needs to cache the shell (HTML/JS/CSS/assets).
+// Service worker: app-shell caching so the PWA boots with no network — or when
+// the network is up but the server is unreachable — plus the existing push
+// handlers. Data reads come from the app's IndexedDB SWR cache (not here) and
+// writes are queued by the app-layer sync engine, so this worker only caches the
+// shell: the HTML and the hashed JS/CSS it references.
 //
 // Strategy:
-//   - navigations        -> network-first, fall back to the cached app shell
-//   - same-origin GET     -> stale-while-revalidate (hashed JS/CSS/img)
-//   - /api/*              -> pass through to the network (SWR cache handles reads)
-//   - non-GET             -> pass through (offline writes are queued by the app)
+//   - navigations      -> cache-first (instant boot), revalidated in background
+//   - same-origin GET   -> stale-while-revalidate (hashed JS/CSS/img)
+//   - /api/*            -> pass through to the network (SWR cache handles reads)
+//   - non-GET           -> pass through (offline writes are queued by the app)
+//
+// The shell HTML references content-hashed chunks (chunk-<hash>.js/.css). Caching
+// only "/" is not enough: the boot then fetches chunks that may be missing from
+// the cache, and against an unreachable server that fetch hangs and the app never
+// mounts. So at install we parse the HTML and cache the chunks alongside it.
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = `gym-shell-${CACHE_VERSION}`;
 const APP_SHELL = "/";
 
-// When the device has a network but the server is unreachable, `fetch` doesn't
-// fail fast — it hangs until a TCP/HTTP timeout (tens of seconds). Racing it
-// against these deadlines lets us fall back to the cached shell/asset quickly so
-// an unreachable server behaves like being offline instead of freezing on boot.
+// A reachable network with an unreachable server makes `fetch` hang until a
+// TCP/HTTP timeout (tens of seconds) rather than failing fast. These deadlines
+// bound the wait so an unreachable server degrades to the cached shell quickly.
 const NAV_TIMEOUT_MS = 3000;
 const ASSET_TIMEOUT_MS = 5000;
 
@@ -29,9 +34,56 @@ function fetchWithTimeout(request, timeoutMs) {
 	);
 }
 
+/** Pull the same-origin .js/.css URLs the shell HTML references. */
+function extractAssets(html) {
+	const urls = new Set();
+	const re = /(?:src|href)\s*=\s*"([^"]+\.(?:js|css))(?:\?[^"]*)?"/gi;
+	for (let m = re.exec(html); m; m = re.exec(html)) {
+		try {
+			urls.add(new URL(m[1], self.registration.scope).href);
+		} catch {
+			// Ignore anything that isn't a resolvable URL.
+		}
+	}
+	return [...urls];
+}
+
+/**
+ * Fetch the shell HTML fresh, cache it, and cache every chunk it references that
+ * isn't cached yet. Chunk names are content-hashed (immutable), so an already
+ * cached chunk is never re-fetched — this stays cheap to run on every launch.
+ */
+async function precacheShell(cache) {
+	const res = await fetch(APP_SHELL, { cache: "reload" });
+	if (!res.ok) return;
+	const html = await res.text();
+	await cache.put(
+		APP_SHELL,
+		new Response(html, {
+			headers: { "Content-Type": "text/html; charset=utf-8" },
+		}),
+	);
+	await Promise.all(
+		extractAssets(html).map(async (assetUrl) => {
+			if (await cache.match(assetUrl)) return;
+			try {
+				const r = await fetch(assetUrl, { cache: "reload" });
+				if (r.ok) await cache.put(assetUrl, r.clone());
+			} catch {
+				// A missing chunk here just falls back to runtime caching later.
+			}
+		}),
+	);
+}
+
 self.addEventListener("install", (event) => {
 	event.waitUntil(
-		caches.open(CACHE_NAME).then((cache) => cache.add(APP_SHELL)),
+		caches
+			.open(CACHE_NAME)
+			.then((cache) => precacheShell(cache))
+			// Never let a transient precache failure block activation; runtime
+			// caching will fill the gaps on the next online navigation.
+			.catch(() => undefined),
 	);
 	self.skipWaiting();
 });
@@ -66,35 +118,44 @@ self.addEventListener("fetch", (event) => {
 	// offline read layer, not the service worker.
 	if (url.pathname.startsWith("/api/")) return;
 
-	// Navigations: network-first with a timeout, falling back to the cached shell
-	// when offline OR when the server doesn't respond in time (unreachable server).
+	// Navigations: cache-first so the app boots instantly regardless of whether
+	// the server is reachable, then refresh the cached shell in the background for
+	// the next launch. Falls back to the network only when nothing is cached yet.
 	if (request.mode === "navigate") {
 		event.respondWith(
 			(async () => {
 				const cache = await caches.open(CACHE_NAME);
+				const cached = await cache.match(APP_SHELL);
+				if (cached) {
+					// Refresh for next time without blocking this boot; ignore failures
+					// (e.g. server unreachable) so we still return the cached shell now.
+					event.waitUntil(precacheShell(cache).catch(() => undefined));
+					return cached;
+				}
+				// First ever load and nothing cached — try the network briefly.
 				try {
 					const response = await fetchWithTimeout(request, NAV_TIMEOUT_MS);
-					// Only treat a real 2xx/3xx as a usable shell; cache & serve it.
 					if (response.ok) {
-						cache.put(APP_SHELL, response.clone());
+						await cache.put(APP_SHELL, response.clone());
 						return response;
 					}
-					throw new Error(`HTTP ${response.status}`);
 				} catch {
-					const cached =
-						(await cache.match(request)) || (await cache.match(APP_SHELL));
-					if (cached) return cached;
-					return new Response("Offline", {
-						status: 503,
-						statusText: "Offline",
-					});
+					// fall through to the offline response
 				}
+				return new Response(
+					"<!doctype html><meta charset=utf-8><title>Offline</title>" +
+						"<body style=\"font-family:system-ui;padding:2rem\">" +
+						"<h1>Can't reach the server</h1>" +
+						"<p>Open the app once while connected so it can work offline.</p>",
+					{ status: 503, headers: { "Content-Type": "text/html" } },
+				);
 			})(),
 		);
 		return;
 	}
 
-	// Static assets: stale-while-revalidate.
+	// Static assets: stale-while-revalidate. A cached (hashed, immutable) asset is
+	// returned instantly, so an unreachable server never blocks the boot.
 	event.respondWith(
 		(async () => {
 			const cache = await caches.open(CACHE_NAME);

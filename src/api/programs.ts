@@ -17,11 +17,24 @@ export const programsRoutes = {
 
 		async POST(req: Request) {
 			const userId = getCurrentUserId(req);
-			const { name } = await req.json();
-			const id = `program_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+			const { id, name } = await req.json();
+			const programId =
+				id ??
+				`program_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-			const program = await prisma.program.create({
-				data: { id, name, userId },
+			// Guard against a client id owned by another user before upserting.
+			const existing = await prisma.program.findUnique({
+				where: { id: programId },
+			});
+			if (existing && existing.userId !== userId) {
+				return Response.json({ error: "Forbidden" }, { status: 403 });
+			}
+
+			// Upsert so replaying a queued offline create is idempotent.
+			const program = await prisma.program.upsert({
+				where: { id: programId },
+				create: { id: programId, name, userId },
+				update: { name },
 			});
 
 			return Response.json(program);
@@ -117,7 +130,8 @@ export const programsRoutes = {
 			},
 		) {
 			const userId = getCurrentUserId(req);
-			const { name, sets, reps, weight, group, weightType } = await req.json();
+			const { id, name, sets, reps, weight, group, weightType } =
+				await req.json();
 			const programId = req.params.id;
 
 			// Verify program belongs to user
@@ -129,12 +143,25 @@ export const programsRoutes = {
 				return Response.json({ error: "Program not found" }, { status: 404 });
 			}
 
-			const id = `exercise_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+			const exerciseId =
+				id ??
+				`exercise_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-			const exercise = await prisma.exercise.create({
-				data: {
-					id,
+			// Upsert so replaying a queued offline create is idempotent. Ownership
+			// is already enforced via the parent program check above.
+			const exercise = await prisma.exercise.upsert({
+				where: { id: exerciseId },
+				create: {
+					id: exerciseId,
 					programId,
+					name,
+					sets,
+					reps,
+					weight,
+					group: group as $Enums.MuscleGroup,
+					weightType: weightType as $Enums.WeightType,
+				},
+				update: {
 					name,
 					sets,
 					reps,

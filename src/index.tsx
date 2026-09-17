@@ -5,9 +5,11 @@ import { exercisePerformancesRoutes } from "./api/exercise-performances";
 import helloRoutes from "./api/hello";
 import { programsRoutes } from "./api/programs";
 import { progressPhotosRoutes } from "./api/progress-photos";
+import { remindersRoutes } from "./api/reminders";
 import { weightLogsRoutes } from "./api/weight-logs";
 import { workoutsRoutes } from "./api/workouts";
 import index from "./index.html";
+import "./lib/scheduler"; // Start the reminder scheduler
 
 const apiRoutes = Object.fromEntries(
 	Object.entries({
@@ -18,6 +20,7 @@ const apiRoutes = Object.fromEntries(
 		...exercisePerformancesRoutes,
 		...weightLogsRoutes,
 		...progressPhotosRoutes,
+		...remindersRoutes,
 	}).map(([key, value]) => [`/api${key}`, value]),
 );
 
@@ -25,6 +28,16 @@ const server = serve({
 	routes: {
 		// Serve index.html for all unmatched routes.
 		...apiRoutes,
+		// Serve the service worker at the root so it can control the whole origin
+		// (a worker's scope cannot be broader than its own URL path).
+		"/sw.js": () =>
+			new Response(Bun.file("public/sw.js"), {
+				headers: {
+					"Content-Type": "text/javascript",
+					"Service-Worker-Allowed": "/",
+					"Cache-Control": "no-cache",
+				},
+			}),
 		"/public/*": serveStatic("public", {
 			stripFromPathname: "/public",
 		}),

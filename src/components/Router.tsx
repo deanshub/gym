@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { ErrorBoundary } from "react-error-boundary";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { ActiveWorkoutPage } from "./ActiveWorkoutPage";
+import { ErrorFallback } from "./ErrorFallback";
 import { LoginScreen } from "./LoginScreen";
 import { Navigation } from "./Navigation";
 import { ProgramsPage } from "./ProgramsPage";
@@ -8,6 +10,29 @@ import { RegisterScreen } from "./RegisterScreen";
 import { StatisticsPage } from "./StatisticsPage";
 import { ToolsPage } from "./ToolsPage";
 import { WorkoutPage } from "./WorkoutPage";
+
+/**
+ * Route table wrapped in an ErrorBoundary that resets whenever the path changes,
+ * so a page that throws (e.g. workout data not cached offline) shows a fallback
+ * instead of a frozen screen, and navigating away clears the error.
+ */
+function AppRoutes() {
+	const location = useLocation();
+	return (
+		<ErrorBoundary
+			FallbackComponent={ErrorFallback}
+			resetKeys={[location.pathname]}
+		>
+			<Routes>
+				<Route index path="/" element={<WorkoutPage />} />
+				<Route path="/workout/:programId" element={<ActiveWorkoutPage />} />
+				<Route path="/programs" element={<ProgramsPage />} />
+				<Route path="/statistics" element={<StatisticsPage />} />
+				<Route path="/tools/:tool" element={<ToolsPage />} />
+			</Routes>
+		</ErrorBoundary>
+	);
+}
 
 interface User {
 	id: string;
@@ -77,13 +102,7 @@ export function Router() {
 		<BrowserRouter>
 			<div className="min-h-screen min-w-screen bg-gray-50 flex flex-col">
 				<Navigation user={user} onLogout={handleLogout} />
-				<Routes>
-					<Route index path="/" element={<WorkoutPage />} />
-					<Route path="/workout/:programId" element={<ActiveWorkoutPage />} />
-					<Route path="/programs" element={<ProgramsPage />} />
-					<Route path="/statistics" element={<StatisticsPage />} />
-					<Route path="/tools/:tool" element={<ToolsPage />} />
-				</Routes>
+				<AppRoutes />
 			</div>
 		</BrowserRouter>
 	);

@@ -2,6 +2,7 @@ import type { Exercise, Program } from "@prisma/client";
 import { Dumbbell, Edit, Plus, Target, Trash2, Zap } from "lucide-react";
 import { useRef, useState } from "react";
 import useSWR, { mutate } from "swr";
+import { apiMutate, newId } from "../lib/offline-sync";
 import type { ProgramWithExercises } from "../types";
 import { ProgramExercises } from "./ProgramExercises";
 import type { ProgramFormRef } from "./ProgramForm";
@@ -32,27 +33,19 @@ export function ProgramsPage() {
 	const safePrograms = Array.isArray(programs) ? programs : [];
 
 	const addProgram = async (name: string) => {
-		const response = await fetch("/api/programs", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ name }),
-		});
-		const newProgram = await response.json();
+		const id = newId("program");
+		// Optimistic update first so the UI reflects the change even offline.
 		mutate(
 			"/api/programs",
-			[...safePrograms, { ...newProgram, exercises: [] }],
+			[...safePrograms, { id, name, exercises: [] }],
 			false,
 		);
+		await apiMutate("/api/programs", { method: "POST", body: { id, name } });
 	};
 
 	const updateProgram = async (
 		updatedProgram: Omit<Program, "userId" | "createdAt" | "updatedAt">,
 	) => {
-		await fetch(`/api/programs/${updatedProgram.id}`, {
-			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ name: updatedProgram.name }),
-		});
 		mutate(
 			"/api/programs",
 			safePrograms.map((p) =>
@@ -60,15 +53,19 @@ export function ProgramsPage() {
 			),
 			false,
 		);
+		await apiMutate(`/api/programs/${updatedProgram.id}`, {
+			method: "PUT",
+			body: { name: updatedProgram.name },
+		});
 	};
 
 	const deleteProgram = async (id: string) => {
-		await fetch(`/api/programs/${id}`, { method: "DELETE" });
 		mutate(
 			"/api/programs",
 			safePrograms.filter((p) => p.id !== id),
 			false,
 		);
+		await apiMutate(`/api/programs/${id}`, { method: "DELETE" });
 	};
 
 	const addExercise = async (
@@ -78,14 +75,10 @@ export function ProgramsPage() {
 			"name" | "sets" | "reps" | "weight" | "group" | "weightType"
 		>,
 	) => {
-		const response = await fetch(`/api/programs/${programId}/exercises`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(exercise),
-		});
-		const newExercise = await response.json();
+		const id = newId("exercise");
+		const newExercise = { id, programId, ...exercise } as Exercise;
 
-		// Update exercises cache
+		// Optimistically update the exercises cache.
 		mutate(
 			`/api/programs/${programId}/exercises`,
 			(currentExercises: Exercise[] = []) => [...currentExercises, newExercise],
@@ -98,11 +91,14 @@ export function ProgramsPage() {
 				exercises: [...(editingProgram.exercises || []), newExercise],
 			});
 		}
+
+		await apiMutate(`/api/programs/${programId}/exercises`, {
+			method: "POST",
+			body: { id, ...exercise },
+		});
 	};
 
 	const deleteExercise = async (programId: string, exerciseId: string) => {
-		await fetch(`/api/exercises/${exerciseId}`, { method: "DELETE" });
-
 		// Update exercises cache
 		mutate(
 			`/api/programs/${programId}`,
@@ -119,6 +115,8 @@ export function ProgramsPage() {
 				),
 			});
 		}
+
+		await apiMutate(`/api/exercises/${exerciseId}`, { method: "DELETE" });
 	};
 
 	const openDialog = (

@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
+import { apiMutate, newId } from "../lib/offline-sync";
 import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -38,15 +39,25 @@ interface WorkoutSession {
 
 export function ActiveWorkoutPage() {
 	const { programId } = useParams<{ programId: string }>();
-	const { data: program } = useSWR<Program>(`/api/programs/${programId}`);
-	const { data: exercises = [] } = useSWR<Exercise[]>(
+	const { data: program, error: programError } = useSWR<Program>(
+		`/api/programs/${programId}`,
+	);
+	// The program-detail endpoint above isn't cached for offline use (only the
+	// programs list and each program's exercises are, via the home/programs
+	// screens), so fall back to the cached list to resolve the program offline.
+	const { data: programs, error: programsError } =
+		useSWR<Program[]>("/api/programs");
+	const { data: exercises = [], error: exercisesError } = useSWR<Exercise[]>(
 		`/api/programs/${programId}/exercises`,
 	);
+
+	const resolvedProgram =
+		program ?? programs?.find((p) => p.id === programId) ?? null;
 
 	const [session, setSession] = useState<WorkoutSession>(() => {
 		const now = new Date();
 		return {
-			workoutId: Date.now().toString(),
+			workoutId: newId("workout"),
 			currentExerciseIndex: 0,
 			startTime: now,
 			exerciseStartTime: now,
@@ -75,23 +86,19 @@ export function ActiveWorkoutPage() {
 		Record<string, { sets: number; reps: number; weight: number }>
 	>({});
 
-	// Create workout session on component mount
+	// Create workout session on component mount. The workout carries our
+	// client-generated id, so the server upserts on it and we never need to
+	// reconcile a server-assigned id — which keeps this working offline.
 	useEffect(() => {
 		if (programId) {
-			fetch("/api/workouts", {
+			void apiMutate("/api/workouts", {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
+				body: {
 					id: session.workoutId,
 					programId,
 					startTime: session.startTime.toISOString(),
-				}),
-			})
-				.then((res) => res.json())
-				.then((workout) => {
-					// Update session with actual workout ID from database
-					setSession((prev) => ({ ...prev, workoutId: workout.id }));
-				});
+				},
+			});
 		}
 	}, [programId, session.workoutId, session.startTime]);
 
@@ -200,46 +207,28 @@ export function ActiveWorkoutPage() {
 				exerciseValues[currentExercise.id]?.weight || currentExercise.weight,
 		};
 
+		// Update local state optimistically (also advances to the next exercise)
+		// so the flow works identically online and offline.
+		setSession((prev) => ({
+			...prev,
+			completedExercises: prev.completedExercises.map((c) =>
+				c.exerciseId === currentExercise.id
+					? { ...c, ...updatedPerformance }
+					: c,
+			),
+			currentExerciseIndex:
+				prev.currentExerciseIndex < exercises.length - 1
+					? prev.currentExerciseIndex + 1
+					: prev.currentExerciseIndex,
+		}));
+
 		try {
-			const response = await fetch(
-				`/api/exercise-performances/${completed.performanceId}`,
-				{
-					method: "PUT",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						workoutId: session.workoutId,
-						...updatedPerformance,
-					}),
-				},
-			);
-
-			if (!response.ok) {
-				const error = await response.text();
-				console.error("Failed to update exercise performance:", error);
-				alert(`Failed to update exercise performance: ${error}`);
-				return;
-			}
-
-			// Update local state
-			setSession((prev) => ({
-				...prev,
-				completedExercises: prev.completedExercises.map((c) =>
-					c.exerciseId === currentExercise.id
-						? { ...c, ...updatedPerformance }
-						: c,
-				),
-			}));
-
-			// Move to next exercise
-			if (session.currentExerciseIndex < exercises.length - 1) {
-				setSession((prev) => ({
-					...prev,
-					currentExerciseIndex: prev.currentExerciseIndex + 1,
-				}));
-			}
+			await apiMutate(`/api/exercise-performances/${completed.performanceId}`, {
+				method: "PUT",
+				body: { workoutId: session.workoutId, ...updatedPerformance },
+			});
 		} catch (error) {
 			console.error("Error updating exercise:", error);
-			alert("Failed to update exercise");
 		}
 	};
 
@@ -250,6 +239,9 @@ export function ActiveWorkoutPage() {
 		const currentExercise = exercises[session.currentExerciseIndex];
 		if (!currentExercise) return;
 
+		// Client-generated id so the performance can be created offline and its
+		// queued replay stays idempotent (server upserts on this id).
+		const performanceId = newId("performance");
 		const performance = {
 			exerciseId: currentExercise.id,
 			startTime: session.exerciseStartTime || now,
@@ -260,84 +252,69 @@ export function ActiveWorkoutPage() {
 				exerciseValues[currentExercise.id]?.weight || currentExercise.weight,
 		};
 
-		// Save exercise performance
-		const response = await fetch("/api/exercise-performances", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				id: Date.now().toString(),
-				workoutId: session.workoutId,
-				...performance,
-				startTime: performance.startTime.toISOString(),
-				endTime: performance.endTime.toISOString(),
-			}),
-		});
-
-		if (!response.ok) {
-			const error = await response.text();
-			console.error("Failed to save exercise performance:", error);
-			alert(`Failed to save exercise performance: ${error}`);
-			return;
-		}
-
-		const savedPerformance = await response.json();
-
 		const updatedSession = {
 			...session,
 			completedExercises: [
 				...session.completedExercises,
-				{
-					...performance,
-					performanceId: savedPerformance.id,
-				},
+				{ ...performance, performanceId },
 			],
 		};
 
-		if (session.currentExerciseIndex < exercises.length - 1) {
+		const isLastExercise = session.currentExerciseIndex >= exercises.length - 1;
+
+		// Advance the UI optimistically, then persist (queues when offline).
+		if (!isLastExercise) {
 			setSession({
 				...updatedSession,
 				currentExerciseIndex: session.currentExerciseIndex + 1,
 				exerciseStartTime: now,
 			});
 		} else {
-			// Workout complete - update workout end time
-			const response = await fetch(`/api/workouts/${session.workoutId}`, {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					endTime: now.toISOString(),
-				}),
-			});
-
-			if (!response.ok) {
-				const error = await response.text();
-				console.error("Failed to complete workout:", error);
-				alert(`Failed to complete workout: ${error}`);
-				return;
-			}
-
-			// Set workout as completed
 			setSession({
 				...updatedSession,
 				workoutCompleted: true,
 				workoutEndTime: now,
 			});
 		}
+
+		await apiMutate("/api/exercise-performances", {
+			method: "POST",
+			body: {
+				id: performanceId,
+				workoutId: session.workoutId,
+				exerciseId: performance.exerciseId,
+				sets: performance.sets,
+				reps: performance.reps,
+				weight: performance.weight,
+				startTime: performance.startTime.toISOString(),
+				endTime: performance.endTime.toISOString(),
+			},
+		});
+
+		if (isLastExercise) {
+			// Workout complete - set the end time (FIFO queue keeps this after the
+			// performance create above).
+			await apiMutate(`/api/workouts/${session.workoutId}`, {
+				method: "PUT",
+				body: { endTime: now.toISOString() },
+			});
+		}
 	};
 
 	const stopWorkout = async () => {
-		// Update workout end time
-		await fetch(`/api/workouts/${session.workoutId}`, {
+		// Update workout end time (queues when offline).
+		await apiMutate(`/api/workouts/${session.workoutId}`, {
 			method: "PUT",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				endTime: new Date().toISOString(),
-			}),
+			body: { endTime: new Date().toISOString() },
 		});
 		window.location.href = "/";
 	};
 
-	if (!program || !exercises.length) {
+	const hasData = Boolean(resolvedProgram) && exercises.length > 0;
+	const loadError = programError ?? programsError ?? exercisesError;
+
+	// First load: nothing cached yet and nothing has failed — show the spinner.
+	if (!hasData && !loadError) {
 		return (
 			<div className="flex-1 p-4">
 				<p>Loading workout...</p>
@@ -345,6 +322,20 @@ export function ActiveWorkoutPage() {
 		);
 	}
 
+	// Data genuinely unavailable (offline with nothing cached, a fetch failure, or
+	// an empty program). Hand off to the route ErrorBoundary for a proper fallback.
+	if (!hasData) {
+		throw new Error(
+			typeof navigator !== "undefined" && !navigator.onLine
+				? "This workout isn't available offline yet. Open it once while online so it's saved for offline use."
+				: !resolvedProgram
+					? "We couldn't load this program."
+					: "This program has no exercises yet.",
+		);
+	}
+
+	// Past the guards above, both are guaranteed present.
+	const activeProgram = resolvedProgram as Program;
 	const currentExercise = exercises[session.currentExerciseIndex];
 	if (!currentExercise) return null;
 
@@ -399,7 +390,7 @@ export function ActiveWorkoutPage() {
 
 			{session.workoutCompleted ? (
 				<WorkoutCompleted
-					program={program}
+					program={activeProgram}
 					startTime={session.startTime}
 					endTime={session.workoutEndTime || new Date()}
 					completedExercises={session.completedExercises}
@@ -407,7 +398,7 @@ export function ActiveWorkoutPage() {
 			) : (
 				<>
 					<div className="flex justify-between items-center mb-4">
-						<h2 className="text-xl font-bold">{program.name}</h2>
+						<h2 className="text-xl font-bold">{activeProgram.name}</h2>
 						<div className="text-lg font-mono">{formatTime(elapsedTime)}</div>
 						<Button variant="outline" onClick={stopWorkout}>
 							<TimerOff />

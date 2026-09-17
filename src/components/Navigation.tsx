@@ -1,6 +1,7 @@
 import { BarChart3, Calendar, Dumbbell, LogOut, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
+import { SyncStatus } from "./SyncStatus";
 import { Button } from "./ui/button";
 import {
 	NavigationMenu,
@@ -98,14 +99,17 @@ export function Navigation({ user, onLogout }: NavigationProps) {
 					<span className="text-xs text-gray-600 truncate">
 						{user.name || user.email}
 					</span>
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={onLogout}
-						className="h-8 px-2"
-					>
-						<LogOut size={14} />
-					</Button>
+					<div className="flex items-center gap-3">
+						<SyncStatus />
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={onLogout}
+							className="h-8 px-2"
+						>
+							<LogOut size={14} />
+						</Button>
+					</div>
 				</div>
 			</div>
 		</nav>

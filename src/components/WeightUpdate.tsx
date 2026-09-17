@@ -10,6 +10,7 @@ import {
 	YAxis,
 } from "recharts";
 import useSWR, { mutate } from "swr";
+import { apiMutate, newId } from "../lib/offline-sync";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -43,14 +44,20 @@ export function WeightUpdate() {
 
 		setIsSubmitting(true);
 		try {
-			await fetch("/api/weight-logs", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ weight: parseFloat(weight) }),
-			});
-
+			const id = newId("weight");
+			const parsed = parseFloat(weight);
+			const optimistic: WeightLog = {
+				id,
+				weight: parsed,
+				createdAt: new Date().toISOString(),
+			};
+			// Optimistically prepend so the new log shows immediately, even offline.
+			mutate("/api/weight-logs", [optimistic, ...weightLogs], false);
 			setWeight("");
-			mutate("/api/weight-logs");
+			await apiMutate("/api/weight-logs", {
+				method: "POST",
+				body: { id, weight: parsed },
+			});
 		} catch (error) {
 			console.error("Error saving weight:", error);
 		} finally {

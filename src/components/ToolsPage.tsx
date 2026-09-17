@@ -3,7 +3,7 @@ import { Bell, Camera, Clock, PersonStanding, Scale } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import useSWR, { mutate } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { MuscleAnatomy } from "./MuscleAnatomy";
 import { ProgressPhotos } from "./ProgressPhotos";
 import { Button } from "./ui/button";
@@ -20,6 +20,7 @@ interface ReminderSettings {
 }
 
 export function ToolsPage() {
+	const { mutate } = useSWRConfig();
 	const { tool } = useParams<{ tool: string }>();
 	const [selectedMuscle, setSelectedMuscle] =
 		useState<$Enums.MuscleGroup | null>(null);

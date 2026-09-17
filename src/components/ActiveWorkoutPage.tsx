@@ -6,6 +6,7 @@ import {
 	ChevronRight,
 	ChevronUp,
 	Edit,
+	ExternalLink,
 	TimerOff,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -445,7 +446,21 @@ export function ActiveWorkoutPage() {
 
 					<Card className="mb-6">
 						<CardHeader>
-							<CardTitle className="text-2xl">{currentExercise.name}</CardTitle>
+							<CardTitle className="text-2xl">
+								{currentExercise.link ? (
+									<a
+										href={currentExercise.link}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 hover:underline"
+									>
+										{currentExercise.name}
+										<ExternalLink size={16} className="shrink-0" />
+									</a>
+								) : (
+									currentExercise.name
+								)}
+							</CardTitle>
 							<div className="flex items-center gap-2 text-sm text-blue-600 font-medium">
 								{getWeightTypeIcon(currentExercise.weightType, 14)}
 								<span>{formatMuscleGroup(currentExercise.group)}</span>

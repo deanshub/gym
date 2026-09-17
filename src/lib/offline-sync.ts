@@ -17,7 +17,7 @@
  * timer re-attempts until the queue drains.
  */
 
-import { mutate } from "swr";
+import { mutate as globalMutate } from "swr";
 import type { MutationMethod, QueuedMutation, SyncState } from "../types";
 import {
 	dequeueMutation,
@@ -177,9 +177,21 @@ function scheduleRetry() {
 	retryDelay = nextRetryDelay(retryDelay);
 }
 
+/**
+ * The app configures a custom SWR cache `provider`, so the top-level `mutate`
+ * imported from "swr" (bound to SWR's default cache) can't reach the mounted
+ * hooks. `SyncBridge` registers the provider-scoped `mutate` here; until then we
+ * fall back to the global one.
+ */
+let boundMutate: typeof globalMutate = globalMutate;
+
+export function setSyncMutate(fn: typeof globalMutate): void {
+	boundMutate = fn;
+}
+
 /** Revalidate every SWR key so the UI reflects the latest server state. */
 async function revalidateAll() {
-	await mutate(() => true, undefined, { revalidate: true });
+	await boundMutate(() => true, undefined, { revalidate: true });
 }
 
 /**

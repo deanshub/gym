@@ -1,7 +1,8 @@
-import type { Exercise, Program } from "@prisma/client";
+import type { Program } from "@prisma/client";
 import { $Enums } from "@prisma/client";
+import { Link2 } from "lucide-react";
 import { forwardRef, useImperativeHandle, useState } from "react";
-import type { ProgramWithExercises } from "@/types";
+import type { NewExerciseInput, ProgramWithExercises } from "@/types";
 import { getWeightTypeIcon } from "../lib/utils";
 import { MuscleAnatomy } from "./MuscleAnatomy";
 import { Button } from "./ui/button";
@@ -14,13 +15,7 @@ interface ProgramFormProps {
 	onSave: (
 		program: Omit<Program, "userId" | "createdAt" | "updatedAt">,
 	) => void;
-	onAddExercise: (
-		programId: string,
-		exercise: Pick<
-			Exercise,
-			"name" | "sets" | "reps" | "weight" | "group" | "weightType"
-		>,
-	) => void;
+	onAddExercise: (programId: string, exercise: NewExerciseInput) => void;
 	onMuscleGroupChange?: (hasSelection: boolean) => void;
 }
 
@@ -46,6 +41,7 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 		const [sets, setSets] = useState("");
 		const [reps, setReps] = useState("");
 		const [weight, setWeight] = useState("");
+		const [link, setLink] = useState("");
 		const [weightType, setWeightType] =
 			useState<$Enums.WeightType>("TOTAL_WEIGHT");
 		const [muscleGroup, setMuscleGroup] = useState<
@@ -72,12 +68,14 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 					weight: parseFloat(weight),
 					group: muscleGroup as $Enums.MuscleGroup,
 					weightType,
+					link: link.trim() ? link.trim() : null,
 				});
 
 				setExerciseName("");
 				setSets("");
 				setReps("");
 				setWeight("");
+				setLink("");
 				setWeightType("TOTAL_WEIGHT");
 				setMuscleGroup(undefined);
 			}
@@ -124,6 +122,17 @@ export const ProgramForm = forwardRef<ProgramFormRef, ProgramFormProps>(
 									value={exerciseName}
 									onChange={(e) => setExerciseName(e.target.value)}
 								/>
+								<div className="relative">
+									<Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+									<Input
+										placeholder="Reference link (optional)"
+										type="url"
+										inputMode="url"
+										value={link}
+										onChange={(e) => setLink(e.target.value)}
+										className="pl-9"
+									/>
+								</div>
 								<div className="grid grid-cols-2 gap-4">
 									<Input
 										placeholder="Sets"

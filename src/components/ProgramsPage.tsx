@@ -1,9 +1,14 @@
 import type { Exercise, Program } from "@prisma/client";
 import { Dumbbell, Edit, Plus, Target, Trash2, Zap } from "lucide-react";
 import { useRef, useState } from "react";
-import useSWR, { mutate } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { apiMutate, newId } from "../lib/offline-sync";
-import type { ProgramWithExercises } from "../types";
+import type {
+	EditableExercise,
+	NewExerciseInput,
+	ProgramWithExercises,
+} from "../types";
+import { ExerciseEditDialog } from "./ExerciseEditDialog";
 import { ProgramExercises } from "./ProgramExercises";
 import type { ProgramFormRef } from "./ProgramForm";
 import { ProgramForm } from "./ProgramForm";
@@ -18,9 +23,11 @@ import {
 } from "./ui/dialog";
 
 export function ProgramsPage() {
+	const { mutate } = useSWRConfig();
 	const { data: programs = [] } = useSWR<Program[]>("/api/programs");
 	const [editingProgram, setEditingProgram] =
 		useState<ProgramWithExercises | null>(null);
+	const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [dialogMode, setDialogMode] = useState<
 		"create" | "rename" | "exercises"
@@ -68,13 +75,7 @@ export function ProgramsPage() {
 		await apiMutate(`/api/programs/${id}`, { method: "DELETE" });
 	};
 
-	const addExercise = async (
-		programId: string,
-		exercise: Pick<
-			Exercise,
-			"name" | "sets" | "reps" | "weight" | "group" | "weightType"
-		>,
-	) => {
+	const addExercise = async (programId: string, exercise: NewExerciseInput) => {
 		const id = newId("exercise");
 		const newExercise = { id, programId, ...exercise } as Exercise;
 
@@ -98,10 +99,28 @@ export function ProgramsPage() {
 		});
 	};
 
-	const deleteExercise = async (programId: string, exerciseId: string) => {
-		// Update exercises cache
+	const updateExercise = async (
+		programId: string,
+		exercise: EditableExercise,
+	) => {
+		// Optimistically patch the exercise in the program's exercises cache.
 		mutate(
-			`/api/programs/${programId}`,
+			`/api/programs/${programId}/exercises`,
+			(currentExercises: Exercise[] = []) =>
+				currentExercises.map((e) =>
+					e.id === exercise.id ? { ...e, ...exercise } : e,
+				),
+			false,
+		);
+
+		const { id, ...fields } = exercise;
+		await apiMutate(`/api/exercises/${id}`, { method: "PUT", body: fields });
+	};
+
+	const deleteExercise = async (programId: string, exerciseId: string) => {
+		// Update the program's exercises cache (same key the list reads from).
+		mutate(
+			`/api/programs/${programId}/exercises`,
 			(currentExercises: Exercise[] = []) =>
 				currentExercises.filter((e) => e.id !== exerciseId),
 			false,
@@ -136,6 +155,18 @@ export function ProgramsPage() {
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+			<ExerciseEditDialog
+				exercise={editingExercise}
+				open={editingExercise !== null}
+				onOpenChange={(open) => {
+					if (!open) setEditingExercise(null);
+				}}
+				onSave={(exercise) => {
+					if (editingExercise)
+						updateExercise(editingExercise.programId, exercise);
+				}}
+			/>
+
 			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader className="space-y-3">
@@ -287,6 +318,7 @@ export function ProgramsPage() {
 										<CardContent className="pt-0">
 											<ProgramExercises
 												programId={program.id}
+												onEditExercise={setEditingExercise}
 												onDeleteExercise={deleteExercise}
 											/>
 											<div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">

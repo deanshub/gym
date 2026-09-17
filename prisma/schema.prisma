@@ -84,6 +84,7 @@ model Exercise {
   id         String      @id
   programId  String      @map("program_id")
   name       String
+  link       String? // Optional reference URL (e.g. demo video), opened from the name
   group      MuscleGroup
   weightType WeightType  @default(TOTAL_WEIGHT) @map("weight_type")
   sets       Int // Default/template values

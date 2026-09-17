@@ -9,7 +9,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import useSWR, { mutate } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { apiMutate, newId } from "../lib/offline-sync";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -33,6 +33,7 @@ interface WeightLog {
 }
 
 export function WeightUpdate() {
+	const { mutate } = useSWRConfig();
 	const [weight, setWeight] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 

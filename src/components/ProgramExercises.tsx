@@ -1,5 +1,5 @@
 import type { Exercise } from "@prisma/client";
-import { Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Suspense } from "react";
 import useSWR from "swr";
 import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
@@ -7,10 +7,15 @@ import { Button } from "./ui/button";
 
 interface ProgramExercisesProps {
 	programId: string;
+	onEditExercise: (exercise: Exercise) => void;
 	onDeleteExercise: (programId: string, exerciseId: string) => void;
 }
 
-function ExercisesList({ programId, onDeleteExercise }: ProgramExercisesProps) {
+function ExercisesList({
+	programId,
+	onEditExercise,
+	onDeleteExercise,
+}: ProgramExercisesProps) {
 	const { data: exercises = [] } = useSWR<Exercise[]>(
 		`/api/programs/${programId}/exercises`,
 	);
@@ -46,7 +51,19 @@ function ExercisesList({ programId, onDeleteExercise }: ProgramExercisesProps) {
 									key={exercise.id}
 									className="flex items-center p-2 bg-gray-50 rounded"
 								>
-									<span className="flex-1">{exercise.name}</span>
+									{exercise.link ? (
+										<a
+											href={exercise.link}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="flex-1 inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 hover:underline"
+										>
+											{exercise.name}
+											<ExternalLink size={12} className="shrink-0" />
+										</a>
+									) : (
+										<span className="flex-1">{exercise.name}</span>
+									)}
 									<div className="flex gap-4">
 										<span className="flex flex-col items-center">
 											<div className="text-sm font-semibold">
@@ -77,7 +94,16 @@ function ExercisesList({ programId, onDeleteExercise }: ProgramExercisesProps) {
 									<Button
 										variant="ghost"
 										size="sm"
+										onClick={() => onEditExercise(exercise)}
+										aria-label={`Edit ${exercise.name}`}
+									>
+										<Pencil size={12} />
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
 										onClick={() => onDeleteExercise(programId, exercise.id)}
+										aria-label={`Delete ${exercise.name}`}
 									>
 										<Trash2 size={12} />
 									</Button>
@@ -93,12 +119,14 @@ function ExercisesList({ programId, onDeleteExercise }: ProgramExercisesProps) {
 
 export function ProgramExercises({
 	programId,
+	onEditExercise,
 	onDeleteExercise,
 }: ProgramExercisesProps) {
 	return (
 		<Suspense fallback={<p className="text-gray-400">Loading exercises...</p>}>
 			<ExercisesList
 				programId={programId}
+				onEditExercise={onEditExercise}
 				onDeleteExercise={onDeleteExercise}
 			/>
 		</Suspense>

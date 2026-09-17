@@ -1,6 +1,6 @@
 import { Camera, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import useSWR, { mutate } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import {
@@ -20,6 +20,7 @@ interface ProgressPhoto {
 }
 
 export function ProgressPhotos() {
+	const { mutate } = useSWRConfig();
 	const [isUploading, setIsUploading] = useState(false);
 	const [capturedImage, setCapturedImage] = useState<string | null>(null);
 	const [showCamera, setShowCamera] = useState(false);

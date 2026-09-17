@@ -3,6 +3,18 @@ import type { Exercise, Program } from "@prisma/client";
 export type { Exercise, Program };
 export type ProgramWithExercises = Program & { exercises: Exercise[] };
 
+/** Exercise fields supplied when creating one (id is generated client-side). */
+export type NewExerciseInput = Pick<
+	Exercise,
+	"name" | "sets" | "reps" | "weight" | "group" | "weightType" | "link"
+>;
+
+/** Exercise fields the user can edit from the programs page. */
+export type EditableExercise = Pick<
+	Exercise,
+	"id" | "name" | "sets" | "reps" | "weight" | "group" | "weightType" | "link"
+>;
+
 /** HTTP methods that mutate server state and can be queued while offline. */
 export type MutationMethod = "POST" | "PUT" | "DELETE";
 

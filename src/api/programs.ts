@@ -130,7 +130,7 @@ export const programsRoutes = {
 			},
 		) {
 			const userId = getCurrentUserId(req);
-			const { id, name, sets, reps, weight, group, weightType } =
+			const { id, name, sets, reps, weight, group, weightType, link } =
 				await req.json();
 			const programId = req.params.id;
 
@@ -147,6 +147,10 @@ export const programsRoutes = {
 				id ??
 				`exercise_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+			// Normalize empty/whitespace link to null so we never store "".
+			const normalizedLink =
+				typeof link === "string" && link.trim() ? link.trim() : null;
+
 			// Upsert so replaying a queued offline create is idempotent. Ownership
 			// is already enforced via the parent program check above.
 			const exercise = await prisma.exercise.upsert({
@@ -158,6 +162,7 @@ export const programsRoutes = {
 					sets,
 					reps,
 					weight,
+					link: normalizedLink,
 					group: group as $Enums.MuscleGroup,
 					weightType: weightType as $Enums.WeightType,
 				},
@@ -166,6 +171,7 @@ export const programsRoutes = {
 					sets,
 					reps,
 					weight,
+					link: normalizedLink,
 					group: group as $Enums.MuscleGroup,
 					weightType: weightType as $Enums.WeightType,
 				},
@@ -175,8 +181,42 @@ export const programsRoutes = {
 		},
 	},
 
-	// Delete exercise
+	// Update or delete exercise
 	"/exercises/:id": {
+		async PUT(req: Request & { params: { id: string } }) {
+			const userId = getCurrentUserId(req);
+			const id = req.params.id;
+			const { name, sets, reps, weight, group, weightType, link } =
+				await req.json();
+
+			// Verify exercise belongs to user's program
+			const exercise = await prisma.exercise.findFirst({
+				where: { id, program: { userId } },
+			});
+
+			if (!exercise) {
+				return Response.json({ error: "Exercise not found" }, { status: 404 });
+			}
+
+			const normalizedLink =
+				typeof link === "string" && link.trim() ? link.trim() : null;
+
+			const updated = await prisma.exercise.update({
+				where: { id },
+				data: {
+					name,
+					sets,
+					reps,
+					weight,
+					link: normalizedLink,
+					group: group as $Enums.MuscleGroup,
+					weightType: weightType as $Enums.WeightType,
+				},
+			});
+
+			return Response.json(updated);
+		},
+
 		async DELETE(req: Request & { params: { id: string } }) {
 			const userId = getCurrentUserId(req);
 			const id = req.params.id;

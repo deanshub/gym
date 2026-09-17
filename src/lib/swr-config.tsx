@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
-import { SWRConfig } from "swr";
+import { useEffect } from "react";
+import { SWRConfig, useSWRConfig } from "swr";
 import type { CacheEntry } from "../types";
 import { loadCacheEntries, saveCacheEntries } from "./offline-db";
+import { setSyncMutate } from "./offline-sync";
 
 const fetcher = async (url: string) => {
 	const res = await fetch(url);
@@ -78,6 +80,19 @@ function cacheProvider(): Map<string, { data: unknown }> {
 	return cacheMap;
 }
 
+/**
+ * Hands the offline sync engine the `mutate` bound to this provider's cache.
+ * The engine lives outside React, so it can't call `useSWRConfig` itself, and
+ * the global `mutate` targets SWR's default cache — not the one our hooks use.
+ */
+function SyncBridge() {
+	const { mutate } = useSWRConfig();
+	useEffect(() => {
+		setSyncMutate(mutate);
+	}, [mutate]);
+	return null;
+}
+
 export function SWRProvider({ children }: { children: ReactNode }) {
 	return (
 		<SWRConfig
@@ -91,6 +106,7 @@ export function SWRProvider({ children }: { children: ReactNode }) {
 				shouldRetryOnError: false,
 			}}
 		>
+			<SyncBridge />
 			{children}
 		</SWRConfig>
 	);

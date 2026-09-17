@@ -24,8 +24,16 @@ export const exercisePerformancesRoutes = {
 
 		async POST(req: Request) {
 			const userId = getCurrentUserId(req);
-			const { workoutId, exerciseId, sets, reps, weight, startTime, endTime } =
-				await req.json();
+			const {
+				id,
+				workoutId,
+				exerciseId,
+				sets,
+				reps,
+				weight,
+				startTime,
+				endTime,
+			} = await req.json();
 
 			// Validate workout belongs to user and exercise exists
 			const [workout, exercise] = await Promise.all([
@@ -40,18 +48,28 @@ export const exercisePerformancesRoutes = {
 				return Response.json({ error: "Exercise not found" }, { status: 404 });
 			}
 
-			const performance = await prisma.exercisePerformance.create({
-				data: {
-					id: `performance_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+			const performanceId =
+				id ??
+				`performance_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+			const start = new Date(startTime);
+			const end = new Date(endTime);
+
+			// Upsert so replaying a queued offline create is idempotent. Ownership
+			// is enforced via the workout check above (workoutId scoped to userId).
+			const performance = await prisma.exercisePerformance.upsert({
+				where: { id: performanceId },
+				create: {
+					id: performanceId,
 					userId,
 					workoutId,
 					exerciseId,
 					sets,
 					reps,
 					weight,
-					startTime: new Date(startTime),
-					endTime: new Date(endTime),
+					startTime: start,
+					endTime: end,
 				},
+				update: { sets, reps, weight, startTime: start, endTime: end },
 			});
 
 			// Update exercise template with performed values

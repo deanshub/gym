@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { cp, rm } from "node:fs/promises";
 import path from "node:path";
 import plugin from "bun-plugin-tailwind";
 
@@ -140,6 +140,21 @@ const result = await Bun.build({
 	},
 	...cliConfig,
 });
+
+// Copy the public/ folder (service worker, manifest, icons) into the build so
+// the SW and manifest are available in a static production deploy.
+const publicDir = path.resolve("public");
+if (existsSync(publicDir)) {
+	await cp(publicDir, path.join(outdir as string, "public"), {
+		recursive: true,
+	});
+	// Also expose the service worker at the root so its scope covers the origin.
+	await cp(
+		path.join(publicDir, "sw.js"),
+		path.join(outdir as string, "sw.js"),
+	);
+	console.log("📦 Copied public/ into the build output");
+}
 
 const end = performance.now();
 

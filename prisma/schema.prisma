@@ -38,10 +38,20 @@ enum WeightType {
   SINGLE_WEIGHT // Single dumbbell/kettlebell weight
 }
 
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 model User {
   id        String   @id
   email     String   @unique
-  password  String   // Hashed password
+  password  String // Hashed password
   name      String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -51,6 +61,8 @@ model User {
   weightLogs           WeightLog[]
   progressPhotos       ProgressPhoto[]
   exercisePerformances ExercisePerformance[]
+  reminder             Reminder?
+  pushSubscription     PushSubscription?
 
   @@map("users")
 }
@@ -106,8 +118,8 @@ model Workout {
 model ProgressPhoto {
   id        String   @id
   userId    String   @map("user_id")
-  filename  String   // Original filename
-  filepath  String   // Path to stored file
+  filename  String // Original filename
+  filepath  String // Path to stored file
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -118,7 +130,7 @@ model ProgressPhoto {
 model WeightLog {
   id        String   @id
   userId    String   @map("user_id")
-  weight    Float    // Weight in kg
+  weight    Float // Weight in kg
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -144,4 +156,29 @@ model ExercisePerformance {
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
   @@map("exercise_performances")
+}
+
+model Reminder {
+  id        String      @id
+  userId    String      @unique @map("user_id")
+  days      String      // Comma-separated day names (e.g., "MONDAY,WEDNESDAY,FRIDAY")
+  time      String      @default("08:00") // HH:MM format
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reminders")
+}
+
+model PushSubscription {
+  id        String   @id
+  userId    String   @unique @map("user_id")
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
 }

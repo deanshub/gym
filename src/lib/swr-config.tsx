@@ -5,8 +5,15 @@ import type { CacheEntry } from "../types";
 import { loadCacheEntries, saveCacheEntries } from "./offline-db";
 import { setSyncMutate } from "./offline-sync";
 
+// A reachable network but unreachable server makes `fetch` hang until a TCP
+// timeout, which would keep a revalidation pending for tens of seconds. Time it
+// out so it fails fast; the SWR IndexedDB cache keeps serving the last data.
+const FETCH_TIMEOUT_MS = 8000;
+
 const fetcher = async (url: string) => {
-	const res = await fetch(url);
+	const res = await fetch(url, {
+		signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+	});
 
 	// If unauthorized, clear localStorage and reload page. This fires only on an
 	// actual HTTP 401 (reachable server), never on an offline network error, so

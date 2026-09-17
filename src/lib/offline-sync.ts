@@ -30,6 +30,11 @@ import {
 const RETRY_BASE_MS = 30_000;
 const RETRY_MAX_MS = 5 * 60_000;
 
+// `navigator.onLine` is true even when the server is unreachable, and `fetch`
+// then hangs until a TCP timeout. Bounding each request lets a request to a dead
+// server fail fast so the mutation is queued (and flushes retried) like offline.
+const REQUEST_TIMEOUT_MS = 5000;
+
 /**
  * Next backoff delay: double the current one, capped at the max. A `current`
  * below the base snaps up to the base so the first retry always waits ~30s.
@@ -114,6 +119,7 @@ export async function apiMutate<T = unknown>(
 	const init: RequestInit = {
 		method,
 		credentials: "same-origin",
+		signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 		...(body !== undefined
 			? { headers: JSON_HEADERS, body: JSON.stringify(body) }
 			: {}),
@@ -211,6 +217,7 @@ export async function flushQueue(): Promise<void> {
 				const res = await fetch(item.url, {
 					method: item.method,
 					credentials: "same-origin",
+					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 					...(item.body !== undefined
 						? { headers: JSON_HEADERS, body: JSON.stringify(item.body) }
 						: {}),

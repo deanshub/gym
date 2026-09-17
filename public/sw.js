@@ -13,6 +13,22 @@ const CACHE_VERSION = "v1";
 const CACHE_NAME = `gym-shell-${CACHE_VERSION}`;
 const APP_SHELL = "/";
 
+// When the device has a network but the server is unreachable, `fetch` doesn't
+// fail fast — it hangs until a TCP/HTTP timeout (tens of seconds). Racing it
+// against these deadlines lets us fall back to the cached shell/asset quickly so
+// an unreachable server behaves like being offline instead of freezing on boot.
+const NAV_TIMEOUT_MS = 3000;
+const ASSET_TIMEOUT_MS = 5000;
+
+/** `fetch`, but aborted (rejects) if it doesn't respond within `timeoutMs`. */
+function fetchWithTimeout(request, timeoutMs) {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), timeoutMs);
+	return fetch(request, { signal: controller.signal }).finally(() =>
+		clearTimeout(timer),
+	);
+}
+
 self.addEventListener("install", (event) => {
 	event.waitUntil(
 		caches.open(CACHE_NAME).then((cache) => cache.add(APP_SHELL)),
@@ -50,17 +66,21 @@ self.addEventListener("fetch", (event) => {
 	// offline read layer, not the service worker.
 	if (url.pathname.startsWith("/api/")) return;
 
-	// Navigations: network-first, fall back to the cached shell when offline.
+	// Navigations: network-first with a timeout, falling back to the cached shell
+	// when offline OR when the server doesn't respond in time (unreachable server).
 	if (request.mode === "navigate") {
 		event.respondWith(
 			(async () => {
+				const cache = await caches.open(CACHE_NAME);
 				try {
-					const response = await fetch(request);
-					const cache = await caches.open(CACHE_NAME);
-					cache.put(APP_SHELL, response.clone());
-					return response;
+					const response = await fetchWithTimeout(request, NAV_TIMEOUT_MS);
+					// Only treat a real 2xx/3xx as a usable shell; cache & serve it.
+					if (response.ok) {
+						cache.put(APP_SHELL, response.clone());
+						return response;
+					}
+					throw new Error(`HTTP ${response.status}`);
 				} catch {
-					const cache = await caches.open(CACHE_NAME);
 					const cached =
 						(await cache.match(request)) || (await cache.match(APP_SHELL));
 					if (cached) return cached;
@@ -79,7 +99,7 @@ self.addEventListener("fetch", (event) => {
 		(async () => {
 			const cache = await caches.open(CACHE_NAME);
 			const cached = await cache.match(request);
-			const network = fetch(request)
+			const network = fetchWithTimeout(request, ASSET_TIMEOUT_MS)
 				.then((response) => {
 					if (response.ok) cache.put(request, response.clone());
 					return response;

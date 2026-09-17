@@ -69,6 +69,9 @@ const isBrowser = typeof window !== "undefined";
 
 let state: SyncState = {
 	online: isBrowser ? navigator.onLine : true,
+	// Assume reachable until a request proves otherwise, so the UI stays quiet on
+	// a healthy boot.
+	serverReachable: true,
 	pending: 0,
 };
 
@@ -76,11 +79,28 @@ const listeners = new Set<() => void>();
 
 function emit(next: Partial<SyncState>) {
 	const merged = { ...state, ...next };
-	if (merged.online === state.online && merged.pending === state.pending) {
+	if (
+		merged.online === state.online &&
+		merged.serverReachable === state.serverReachable &&
+		merged.pending === state.pending
+	) {
 		return;
 	}
 	state = merged;
 	for (const cb of listeners) cb();
+}
+
+/**
+ * Record that the server responded (reachable) or that a request failed with a
+ * network error/timeout while the device is online (unreachable). Any HTTP
+ * status counts as reachable — a 4xx/5xx still means the server answered.
+ */
+export function reportServerReachable(): void {
+	emit({ serverReachable: true });
+}
+
+export function reportServerUnreachable(): void {
+	emit({ serverReachable: false });
 }
 
 export function subscribeSync(cb: () => void): () => void {
@@ -128,6 +148,8 @@ export async function apiMutate<T = unknown>(
 	if (!isBrowser || navigator.onLine) {
 		try {
 			const res = await fetch(url, init);
+			// The server answered (any status) — it's reachable.
+			reportServerReachable();
 			if (res.ok) {
 				return res.status === 204
 					? (undefined as T)
@@ -144,6 +166,8 @@ export async function apiMutate<T = unknown>(
 			if (err instanceof Error && err.message.startsWith("HTTP ")) {
 				throw err;
 			}
+			// Reached the catch without an HTTP response: network error or timeout.
+			reportServerUnreachable();
 		}
 	}
 
@@ -222,6 +246,7 @@ export async function flushQueue(): Promise<void> {
 						? { headers: JSON_HEADERS, body: JSON.stringify(item.body) }
 						: {}),
 				});
+				reportServerReachable();
 				if (shouldDropAfterReplay(res.status)) {
 					await dequeueMutation(item.key);
 					flushedAny = true;
@@ -229,6 +254,7 @@ export async function flushQueue(): Promise<void> {
 					break; // transient server error — retry on the next flush
 				}
 			} catch {
+				reportServerUnreachable();
 				break; // network dropped mid-flush — retry later
 			}
 		}

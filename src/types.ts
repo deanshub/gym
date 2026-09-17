@@ -38,7 +38,16 @@ export type CacheEntry = [string, { data: unknown }];
 
 /** Snapshot of the sync engine consumed by the UI via useSyncExternalStore. */
 export interface SyncState {
+	/** `navigator.onLine`: whether the device has network connectivity at all. */
 	online: boolean;
+	/**
+	 * Whether the server is actually responding. Distinct from `online`: the
+	 * device can be on a network (`online === true`) while the server is down or
+	 * unreachable, in which case requests fail/time out. Set from real fetch
+	 * outcomes — any HTTP response means reachable; a network error or timeout
+	 * while online means unreachable.
+	 */
+	serverReachable: boolean;
 	/** Number of mutations still waiting to be flushed. */
 	pending: number;
 }

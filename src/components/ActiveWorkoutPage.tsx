@@ -9,11 +9,15 @@ import {
 	ExternalLink,
 	Flag,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import useSWR from "swr";
 import { apiMutate, newId } from "../lib/offline-sync";
-import { formatMuscleGroup, getWeightTypeIcon } from "../lib/utils";
+import {
+	formatMuscleGroup,
+	getWeightTypeIcon,
+	sortExercisesByGroupOrder,
+} from "../lib/utils";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -48,12 +52,24 @@ export function ActiveWorkoutPage() {
 	// screens), so fall back to the cached list to resolve the program offline.
 	const { data: programs, error: programsError } =
 		useSWR<Program[]>("/api/programs");
-	const { data: exercises = [], error: exercisesError } = useSWR<Exercise[]>(
+	const { data: rawExercises = [], error: exercisesError } = useSWR<Exercise[]>(
 		`/api/programs/${programId}/exercises`,
 	);
 
 	const resolvedProgram =
 		program ?? programs?.find((p) => p.id === programId) ?? null;
+
+	// Order exercises by the program's muscle-group order so the workout follows
+	// the sequence the user arranged on the Programs page. Everything below drives
+	// the flow off this ordered list.
+	const exercises = useMemo(
+		() =>
+			sortExercisesByGroupOrder(
+				rawExercises,
+				resolvedProgram?.muscleGroupOrder ?? null,
+			),
+		[rawExercises, resolvedProgram],
+	);
 
 	const [session, setSession] = useState<WorkoutSession>(() => {
 		const now = new Date();

@@ -62,7 +62,7 @@ export const programsRoutes = {
 			},
 		) {
 			const userId = getCurrentUserId(req);
-			const { name } = await req.json();
+			const { name, muscleGroupOrder } = await req.json();
 			const id = req.params.id;
 
 			const program = await prisma.program.findFirst({
@@ -73,9 +73,14 @@ export const programsRoutes = {
 				return Response.json({ error: "Program not found" }, { status: 404 });
 			}
 
+			// Update only the fields provided, so a rename and a group-reorder can
+			// each send just their own field.
 			await prisma.program.update({
 				where: { id },
-				data: { name },
+				data: {
+					...(name !== undefined && { name }),
+					...(muscleGroupOrder !== undefined && { muscleGroupOrder }),
+				},
 			});
 
 			return Response.json({ success: true });

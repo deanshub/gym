@@ -68,14 +68,18 @@ model User {
 }
 
 model Program {
-  id        String     @id
-  userId    String     @map("user_id")
+  id        String   @id
+  userId    String   @map("user_id")
   name      String
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exercises Exercise[]
-  workouts  Workout[]
+  // Comma-separated MuscleGroup names giving the display/workout order of this
+  // program's muscle groups (e.g. "CHEST,TRICEPS,LATS"). Groups not listed fall
+  // back to exercise-creation order and sort after listed ones.
+  muscleGroupOrder String?    @map("muscle_group_order")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises        Exercise[]
+  workouts         Workout[]
 
   @@map("programs")
 }

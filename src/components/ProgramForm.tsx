@@ -12,9 +12,7 @@ interface ProgramFormProps {
 	program: ProgramWithExercises | null;
 	mode: "create" | "rename" | "exercises";
 	wizardStep?: 1 | 2;
-	onSave: (
-		program: Omit<Program, "userId" | "createdAt" | "updatedAt">,
-	) => void;
+	onSave: (program: Pick<Program, "id" | "name">) => void;
 	onAddExercise: (programId: string, exercise: NewExerciseInput) => void;
 	onMuscleGroupChange?: (hasSelection: boolean) => void;
 }

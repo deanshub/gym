@@ -51,18 +51,37 @@ export function ProgramsPage() {
 	};
 
 	const updateProgram = async (
-		updatedProgram: Omit<Program, "userId" | "createdAt" | "updatedAt">,
+		updatedProgram: Pick<Program, "id" | "name">,
 	) => {
+		// Merge (not replace) so a rename keeps the program's other fields, e.g.
+		// muscleGroupOrder, in the optimistic cache.
 		mutate(
 			"/api/programs",
 			safePrograms.map((p) =>
-				p.id === updatedProgram.id ? updatedProgram : p,
+				p.id === updatedProgram.id ? { ...p, ...updatedProgram } : p,
 			),
 			false,
 		);
 		await apiMutate(`/api/programs/${updatedProgram.id}`, {
 			method: "PUT",
 			body: { name: updatedProgram.name },
+		});
+	};
+
+	const reorderMuscleGroups = async (program: Program, newOrder: string[]) => {
+		const muscleGroupOrder = newOrder.join(",");
+		// Optimistically patch the program in the list cache so the sections
+		// (and the workout sequence, which reads the same order) update instantly.
+		mutate(
+			"/api/programs",
+			safePrograms.map((p) =>
+				p.id === program.id ? { ...p, muscleGroupOrder } : p,
+			),
+			false,
+		);
+		await apiMutate(`/api/programs/${program.id}`, {
+			method: "PUT",
+			body: { muscleGroupOrder },
 		});
 	};
 
@@ -317,9 +336,10 @@ export function ProgramsPage() {
 										</CardHeader>
 										<CardContent className="pt-0">
 											<ProgramExercises
-												programId={program.id}
+												program={program}
 												onEditExercise={setEditingExercise}
 												onDeleteExercise={deleteExercise}
+												onReorderGroups={reorderMuscleGroups}
 											/>
 											<div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
 												<Button

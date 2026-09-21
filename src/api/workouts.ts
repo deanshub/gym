@@ -85,5 +85,17 @@ export const workoutsRoutes = {
 
 			return Response.json(workout);
 		},
+
+		async DELETE(req: Request & { params: { id: string } }) {
+			const userId = getCurrentUserId(req);
+			const id = req.params.id;
+
+			// deleteMany (scoped by userId) is idempotent and cascades to the
+			// workout's exercise performances (onDelete: Cascade). Replaying a queued
+			// offline delete on an already-gone workout is a no-op, not a 500.
+			await prisma.workout.deleteMany({ where: { id, userId } });
+
+			return Response.json({ success: true });
+		},
 	},
 };

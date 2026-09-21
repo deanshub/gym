@@ -100,5 +100,20 @@ export const exercisePerformancesRoutes = {
 
 			return Response.json(updatedPerformance);
 		},
+
+		async DELETE(req: Request) {
+			const userId = getCurrentUserId(req);
+			const url = new URL(req.url);
+			const performanceId = url.pathname.split("/").pop();
+
+			// deleteMany (scoped by userId) is idempotent: deleting an already-gone
+			// row is a no-op rather than a throw, so replaying a queued offline
+			// delete never 500s and gets dropped from the queue on replay.
+			await prisma.exercisePerformance.deleteMany({
+				where: { id: performanceId, userId },
+			});
+
+			return Response.json({ success: true });
+		},
 	},
 };

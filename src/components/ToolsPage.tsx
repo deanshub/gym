@@ -1,5 +1,12 @@
 import type { $Enums } from "@prisma/client";
-import { Bell, Camera, Clock, PersonStanding, Scale } from "lucide-react";
+import {
+	Bell,
+	Camera,
+	Clock,
+	Dumbbell,
+	PersonStanding,
+	Scale,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -13,6 +20,7 @@ import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { WeightUpdate } from "./WeightUpdate";
+import { WorkoutHistory } from "./WorkoutHistory";
 
 interface ReminderSettings {
 	days: string[];
@@ -184,6 +192,12 @@ export function ToolsPage() {
 							Reminders
 						</Link>
 					</TabsTrigger>
+					<TabsTrigger value="workouts" asChild>
+						<Link to="/tools/workouts" className="!px-1">
+							<Dumbbell className="!h-4 !w-4" />
+							Workouts
+						</Link>
+					</TabsTrigger>
 				</TabsList>
 
 				<TabsContent value="weight" className="space-y-4">
@@ -296,6 +310,10 @@ export function ToolsPage() {
 							</Button>
 						</CardContent>
 					</Card>
+				</TabsContent>
+
+				<TabsContent value="workouts" className="space-y-4">
+					<WorkoutHistory />
 				</TabsContent>
 			</Tabs>
 		</div>

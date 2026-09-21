@@ -1,7 +1,26 @@
-import type { Exercise, Program } from "@prisma/client";
+import type {
+	Exercise,
+	ExercisePerformance,
+	Program,
+	Workout,
+} from "@prisma/client";
 
-export type { Exercise, Program };
+export type { Exercise, ExercisePerformance, Program, Workout };
 export type ProgramWithExercises = Program & { exercises: Exercise[] };
+
+/** A logged performance joined with its exercise template. */
+export type PerformanceWithExercise = ExercisePerformance & {
+	exercise: Exercise;
+};
+
+/**
+ * A past workout with its program and logged performances, as returned by
+ * `GET /api/workouts`. Consumed by the workout-history editor in Tools.
+ */
+export type WorkoutWithDetails = Workout & {
+	program: Program;
+	exercisePerformances: PerformanceWithExercise[];
+};
 
 /** Exercise fields supplied when creating one (id is generated client-side). */
 export type NewExerciseInput = Pick<

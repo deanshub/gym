@@ -15,7 +15,7 @@
 // the cache, and against an unreachable server that fetch hangs and the app never
 // mounts. So at install we parse the HTML and cache the chunks alongside it.
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE_NAME = `gym-shell-${CACHE_VERSION}`;
 const APP_SHELL = "/";
 
@@ -34,13 +34,17 @@ function fetchWithTimeout(request, timeoutMs) {
 	);
 }
 
-/** Pull the same-origin .js/.css URLs the shell HTML references. */
-function extractAssets(html) {
+/** Pull every same-origin asset URL the shell HTML references (src/href). */
+function extractAssetUrls(html) {
 	const urls = new Set();
-	const re = /(?:src|href)\s*=\s*"([^"]+\.(?:js|css))(?:\?[^"]*)?"/gi;
+	const re = /(?:src|href)\s*=\s*"([^"]+?)"/gi;
 	for (let m = re.exec(html); m; m = re.exec(html)) {
+		const raw = m[1];
+		if (raw.startsWith("data:") || raw.startsWith("#")) continue;
 		try {
-			urls.add(new URL(m[1], self.registration.scope).href);
+			const u = new URL(raw, self.registration.scope);
+			// Only same-origin assets are ours to cache.
+			if (u.origin === self.location.origin) urls.add(u.href);
 		} catch {
 			// Ignore anything that isn't a resolvable URL.
 		}
@@ -48,32 +52,102 @@ function extractAssets(html) {
 	return [...urls];
 }
 
+/** True for the render-critical bundle chunks the page cannot display without. */
+function isCriticalAsset(url) {
+	return /\.(?:js|css)(?:\?|$)/i.test(url);
+}
+
+/** True for a web app manifest URL (its icons live inside, not in the HTML). */
+function isManifest(url) {
+	return /\.webmanifest(?:\?|$)/i.test(url) || /manifest\.json(?:\?|$)/i.test(url);
+}
+
 /**
- * Fetch the shell HTML fresh, cache it, and cache every chunk it references that
- * isn't cached yet. Chunk names are content-hashed (immutable), so an already
- * cached chunk is never re-fetched — this stays cheap to run on every launch.
+ * Fetch a manifest and return the same-origin icon URLs it references. Icons are
+ * declared inside the JSON, so they're invisible to the HTML asset scan; without
+ * this the PWA install icon 404s offline. Best-effort — any failure yields none.
+ */
+async function extractManifestIcons(manifestUrl) {
+	try {
+		const res = await fetch(manifestUrl, { cache: "reload" });
+		if (!res.ok) return [];
+		const manifest = await res.json();
+		const icons = Array.isArray(manifest.icons) ? manifest.icons : [];
+		const urls = [];
+		for (const icon of icons) {
+			if (!icon || typeof icon.src !== "string") continue;
+			try {
+				const u = new URL(icon.src, self.registration.scope);
+				if (u.origin === self.location.origin) urls.push(u.href);
+			} catch {
+				// skip unresolvable icon src
+			}
+		}
+		return urls;
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Fetch the shell HTML fresh and cache it together with the assets it references.
+ *
+ * Critical bundle chunks (JS/CSS) are cached FIRST, and the HTML is committed
+ * only if they all succeed — so the cached shell can never point at a chunk we
+ * don't have. (Committing the HTML first, then chunks, risks a partial precache
+ * that boots the app unstyled offline when a chunk fetch fails mid-way.) Content
+ * hashes make chunks immutable, so an already-cached one is never re-fetched and
+ * this stays cheap to re-run on every launch. Icons/manifest are cached
+ * best-effort and never block the shell.
  */
 async function precacheShell(cache) {
 	const res = await fetch(APP_SHELL, { cache: "reload" });
 	if (!res.ok) return;
 	const html = await res.text();
+
+	const assets = extractAssetUrls(html);
+	const critical = assets.filter(isCriticalAsset);
+	const extras = assets.filter((u) => !isCriticalAsset(u));
+
+	// Manifest icons are referenced inside the manifest JSON, not the HTML, so
+	// pull them in explicitly and cache them best-effort alongside the extras.
+	const manifests = assets.filter(isManifest);
+	for (const m of manifests) {
+		for (const icon of await extractManifestIcons(m)) {
+			if (!extras.includes(icon)) extras.push(icon);
+		}
+	}
+
+	const cacheOne = async (url) => {
+		if (await cache.match(url)) return true;
+		try {
+			const r = await fetch(url, { cache: "reload" });
+			if (r.ok) {
+				await cache.put(url, r.clone());
+				return true;
+			}
+		} catch {
+			// fall through to false
+		}
+		return false;
+	};
+
+	// All render-critical chunks must cache before we commit the HTML.
+	const results = await Promise.all(critical.map(cacheOne));
+	if (critical.length > 0 && !results.every(Boolean)) {
+		// Leave the last-known-good shell in place rather than commit a broken one.
+		return;
+	}
+
 	await cache.put(
 		APP_SHELL,
 		new Response(html, {
 			headers: { "Content-Type": "text/html; charset=utf-8" },
 		}),
 	);
-	await Promise.all(
-		extractAssets(html).map(async (assetUrl) => {
-			if (await cache.match(assetUrl)) return;
-			try {
-				const r = await fetch(assetUrl, { cache: "reload" });
-				if (r.ok) await cache.put(assetUrl, r.clone());
-			} catch {
-				// A missing chunk here just falls back to runtime caching later.
-			}
-		}),
-	);
+
+	// Icons, manifest, fonts: nice to have offline, but not worth blocking on.
+	await Promise.all(extras.map(cacheOne));
 }
 
 self.addEventListener("install", (event) => {

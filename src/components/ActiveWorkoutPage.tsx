@@ -7,7 +7,7 @@ import {
 	ChevronUp,
 	Edit,
 	ExternalLink,
-	TimerOff,
+	Flag,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -190,6 +190,24 @@ export function ActiveWorkoutPage() {
 		}
 	};
 
+	/**
+	 * The next exercise still needing work, searching forward from `fromIndex` and
+	 * wrapping around. Because the user jumps between exercises by gym availability,
+	 * completing one advances to the next *incomplete* one (which may be an earlier,
+	 * skipped exercise) rather than blindly to the next index. Returns `fromIndex`
+	 * if nothing is left incomplete.
+	 */
+	const findNextIncompleteIndex = (
+		fromIndex: number,
+		completedIds: Set<string>,
+	) => {
+		for (let step = 1; step <= exercises.length; step++) {
+			const idx = (fromIndex + step) % exercises.length;
+			if (!completedIds.has(exercises[idx].id)) return idx;
+		}
+		return fromIndex;
+	};
+
 	const updateExercise = async () => {
 		if (!exercises.length) return;
 
@@ -253,21 +271,27 @@ export function ActiveWorkoutPage() {
 				exerciseValues[currentExercise.id]?.weight || currentExercise.weight,
 		};
 
-		const updatedSession = {
-			...session,
-			completedExercises: [
-				...session.completedExercises,
-				{ ...performance, performanceId },
-			],
-		};
+		const completedExercises = [
+			...session.completedExercises,
+			{ ...performance, performanceId },
+		];
+		const updatedSession = { ...session, completedExercises };
 
-		const isLastExercise = session.currentExerciseIndex >= exercises.length - 1;
+		// The workout finishes only when *every* exercise is done — not merely
+		// because we're on the last one by index. The user moves between exercises
+		// by gym availability, so completing the last-indexed exercise may still
+		// leave earlier ones skipped, and force-ending there would strand them.
+		const completedIds = new Set(completedExercises.map((c) => c.exerciseId));
+		const isWorkoutComplete = exercises.every((e) => completedIds.has(e.id));
 
 		// Advance the UI optimistically, then persist (queues when offline).
-		if (!isLastExercise) {
+		if (!isWorkoutComplete) {
 			setSession({
 				...updatedSession,
-				currentExerciseIndex: session.currentExerciseIndex + 1,
+				currentExerciseIndex: findNextIncompleteIndex(
+					session.currentExerciseIndex,
+					completedIds,
+				),
 				exerciseStartTime: now,
 			});
 		} else {
@@ -292,7 +316,7 @@ export function ActiveWorkoutPage() {
 			},
 		});
 
-		if (isLastExercise) {
+		if (isWorkoutComplete) {
 			// Workout complete - set the end time (FIFO queue keeps this after the
 			// performance create above).
 			await apiMutate(`/api/workouts/${session.workoutId}`, {
@@ -302,13 +326,20 @@ export function ActiveWorkoutPage() {
 		}
 	};
 
-	const stopWorkout = async () => {
-		// Update workout end time (queues when offline).
+	// Finish the workout as-is, keeping whatever's been completed and skipping the
+	// rest. Shows the completion summary (like a natural finish) rather than bailing
+	// to the home screen, so an early finish is still a logged, celebrated workout.
+	const finishWorkout = async () => {
+		const now = new Date();
+		setSession((prev) => ({
+			...prev,
+			workoutCompleted: true,
+			workoutEndTime: now,
+		}));
 		await apiMutate(`/api/workouts/${session.workoutId}`, {
 			method: "PUT",
-			body: { endTime: new Date().toISOString() },
+			body: { endTime: now.toISOString() },
 		});
-		window.location.href = "/";
 	};
 
 	const hasData = Boolean(resolvedProgram) && exercises.length > 0;
@@ -401,9 +432,9 @@ export function ActiveWorkoutPage() {
 					<div className="flex justify-between items-center mb-4">
 						<h2 className="text-xl font-bold">{activeProgram.name}</h2>
 						<div className="text-lg font-mono">{formatTime(elapsedTime)}</div>
-						<Button variant="outline" onClick={stopWorkout}>
-							<TimerOff />
-							Stop Workout
+						<Button variant="outline" onClick={finishWorkout}>
+							<Flag />
+							Finish Workout
 						</Button>
 					</div>
 
@@ -558,11 +589,15 @@ export function ActiveWorkoutPage() {
 								</div>
 							</div>
 							{(() => {
-								const isCompleted = session.completedExercises.some(
-									(c) => c.exerciseId === currentExercise.id,
+								const completedIds = new Set(
+									session.completedExercises.map((c) => c.exerciseId),
 								);
-								const isLastExercise =
-									session.currentExerciseIndex === exercises.length - 1;
+								const isCompleted = completedIds.has(currentExercise.id);
+								// This is the last one to finish only when every *other*
+								// exercise is already done — so completing it ends the workout.
+								const isFinalRemaining = exercises.every(
+									(e) => e.id === currentExercise.id || completedIds.has(e.id),
+								);
 
 								return isCompleted ? (
 									<Button onClick={updateExercise} className="w-full" size="lg">
@@ -576,7 +611,9 @@ export function ActiveWorkoutPage() {
 										size="lg"
 									>
 										<CheckCircle size={20} />
-										{isLastExercise ? "Complete Workout" : "Complete Exercise"}
+										{isFinalRemaining
+											? "Complete Workout"
+											: "Complete Exercise"}
 									</Button>
 								);
 							})()}

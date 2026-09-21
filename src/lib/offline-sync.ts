@@ -96,7 +96,17 @@ function emit(next: Partial<SyncState>) {
  * status counts as reachable — a 4xx/5xx still means the server answered.
  */
 export function reportServerReachable(): void {
+	const recovered = !state.serverReachable;
 	emit({ serverReachable: true });
+	// On the unreachable→reachable transition, drain the queue immediately rather
+	// than waiting out the backoff. This is what recovers a queue that built up
+	// while the app stayed online with the server down — the event-driven flush
+	// triggers (`online`/visibility) never fired because connectivity never
+	// changed. flushQueue is hoisted, and its own `flushing` guard makes any
+	// re-entry from a replay success a no-op.
+	if (recovered && isBrowser && navigator.onLine) {
+		void flushQueue();
+	}
 }
 
 export function reportServerUnreachable(): void {
@@ -174,6 +184,13 @@ export async function apiMutate<T = unknown>(
 	const mutation: QueuedMutation = { url, method, body, createdAt: Date.now() };
 	await enqueueMutation(mutation);
 	await refreshPending();
+	// Kick a flush (non-blocking) so the backoff-retry chain gets armed. Without
+	// this, a write queued while the app stays online (server unreachable) would
+	// never retry — the chain is only started from inside flushQueue, which
+	// otherwise runs solely on online/visibility events or startup. If the server
+	// is still down the flush fails fast and schedules the retry; if it recovered,
+	// it drains now.
+	if (isBrowser && navigator.onLine) void flushQueue();
 	// Optimistic result: the body already carries the client-generated id.
 	return body as T;
 }

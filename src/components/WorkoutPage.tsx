@@ -1,12 +1,14 @@
 import type { Program } from "@prisma/client";
 import { Dumbbell, Zap } from "lucide-react";
 import { Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import useSWR from "swr";
 import { ProgramCard } from "./ProgramCard";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function WorkoutPage() {
+	const navigate = useNavigate();
 	const { data: programs = [] } = useSWR<Program[]>("/api/programs");
 
 	if (programs.length === 0) {
@@ -25,9 +27,7 @@ export function WorkoutPage() {
 					</p>
 					<Button
 						size="lg"
-						onClick={() => {
-							window.location.href = "/programs";
-						}}
+						onClick={() => navigate("/programs")}
 						className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700"
 					>
 						<Zap className="mr-2 h-5 w-5" />

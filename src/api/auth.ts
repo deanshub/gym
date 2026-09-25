@@ -1,5 +1,16 @@
 import { prisma } from "../lib/prisma";
 
+// Persist the session across app relaunches and container upgrades. Without a
+// Max-Age this is a *session* cookie: the browser/PWA drops it when the OS reaps
+// the web session, forcing a surprise re-login on next launch — which used to
+// strand any queued offline writes (they replayed unauthenticated → 401 → were
+// discarded). 90 days keeps the user signed in through normal use.
+const SESSION_MAX_AGE_SECONDS = 90 * 24 * 60 * 60;
+
+function sessionCookie(userId: string): string {
+	return `auth-token=${userId}; HttpOnly; Path=/; SameSite=Strict; Max-Age=${SESSION_MAX_AGE_SECONDS}`;
+}
+
 const authRoutes = {
 	"/login": async (req: Request) => {
 		if (req.method !== "POST") {
@@ -38,10 +49,7 @@ const authRoutes = {
 				},
 			});
 
-			response.headers.set(
-				"Set-Cookie",
-				`auth-token=${user.id}; HttpOnly; Path=/; SameSite=Strict`,
-			);
+			response.headers.set("Set-Cookie", sessionCookie(user.id));
 			return response;
 		} catch (_error) {
 			return Response.json({ error: "Login failed" }, { status: 500 });
@@ -113,10 +121,7 @@ const authRoutes = {
 				},
 			});
 
-			response.headers.set(
-				"Set-Cookie",
-				`auth-token=${user.id}; HttpOnly; Path=/; SameSite=Strict`,
-			);
+			response.headers.set("Set-Cookie", sessionCookie(user.id));
 			return response;
 		} catch (_error) {
 			return Response.json({ error: "Registration failed" }, { status: 500 });

@@ -29,8 +29,15 @@ describe("shouldDropAfterReplay", () => {
 		expect(shouldDropAfterReplay(204)).toBe(true);
 		expect(shouldDropAfterReplay(404)).toBe(true); // already-deleted etc.
 		expect(shouldDropAfterReplay(409)).toBe(true);
+		expect(shouldDropAfterReplay(403)).toBe(true); // genuinely forbidden — permanent
 		expect(shouldDropAfterReplay(500)).toBe(false); // transient — retry later
 		expect(shouldDropAfterReplay(503)).toBe(false);
+	});
+
+	it("keeps a 401 so an expired session never discards queued writes", () => {
+		// A 401 means "log back in", not "this write is invalid" — the mutation
+		// must survive the re-login and replay with the new session cookie.
+		expect(shouldDropAfterReplay(401)).toBe(false);
 	});
 });
 

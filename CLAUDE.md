@@ -42,6 +42,13 @@ date-fns for dates, one component per file, SWR for fetching).
      (optimistic; queued in IndexedDB when offline) and replay FIFO on reconnect,
      driven by `online`/`visibilitychange` events plus an exponential-backoff
      retry. NOT SW Background Sync (iOS Safari lacks it).
+- **Queued writes survive a re-login** (`shouldDropAfterReplay`): a replay that
+  hits an expired session gets a `401`, which is treated as recoverable — the
+  write is KEPT (not dropped like other 4xx) and pauses the flush until the user
+  logs back in, then replays with the new cookie. Never make a 401 drop the
+  queue; that silently deletes the user's unsynced work. The auth cookie carries
+  a 90-day `Max-Age` (`src/api/auth.ts`) so a PWA relaunch / container upgrade
+  doesn't force a surprise re-login in the first place.
 - **Offline data model**: all Prisma ids are client-settable `String @id`;
   create handlers `upsert` on a client-generated id (`newId()`) so queued replays
   are idempotent. Conflict policy: last-write-wins by `updatedAt`. When adding a

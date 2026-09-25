@@ -63,8 +63,14 @@ export function newId(prefix: string): string {
  * applied; a 4xx means it can never succeed (e.g. deleting something already
  * gone) so we drop it to avoid an infinite retry loop. A 5xx / network error is
  * transient — keep it and stop the flush so it retries later.
+ *
+ * A 401 is the exception among 4xx: it means the session expired, NOT that the
+ * write is invalid. It will succeed once the user logs back in, so we KEEP it
+ * (and pause the flush) rather than silently discarding the user's unsynced
+ * work. This is the bug that lost queued workouts across a forced re-login.
  */
 export function shouldDropAfterReplay(status: number): boolean {
+	if (status === 401) return false;
 	return status < 500;
 }
 
@@ -196,11 +202,13 @@ export async function apiMutate<T = unknown>(
 					? (undefined as T)
 					: ((await res.json()) as T);
 			}
-			// Client error: not recoverable by retrying — surface it.
-			if (res.status >= 400 && res.status < 500) {
+			// Client error: not recoverable by retrying — surface it. A 401 is the
+			// exception: the session expired, so the write is still valid and must be
+			// queued (not lost) to replay after re-login, just like a transient error.
+			if (res.status !== 401 && res.status >= 400 && res.status < 500) {
 				throw new Error(`HTTP ${res.status}`);
 			}
-			// 5xx falls through to the queue for a later retry.
+			// 401 and 5xx fall through to the queue for a later retry.
 		} catch (err) {
 			// A thrown Error above (4xx) must propagate; only a genuine network
 			// failure (TypeError from fetch) should be queued.
@@ -318,9 +326,17 @@ export async function flushQueue(): Promise<void> {
 						);
 					}
 				} else {
-					// 5xx: the server answered but failed. Keep the item and stop; this
-					// is the head-of-line block behind an endless "Syncing…".
-					pushLog("error", `${label} → HTTP ${res.status}; will retry`);
+					// Kept for a later retry without discarding the user's change: a 5xx
+					// (server answered but failed) or a 401 (session expired — the write
+					// is valid, it just needs a live session, which a re-login restores).
+					// Either way stop here; this is the head-of-line block behind an
+					// endless "Syncing…".
+					pushLog(
+						"error",
+						res.status === 401
+							? `${label} → session expired; will sync after you sign in again`
+							: `${label} → HTTP ${res.status}; will retry`,
+					);
 					break;
 				}
 			} catch {

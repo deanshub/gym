@@ -1,0 +1,29 @@
+# Keep the build context clean so `COPY . .` never bakes local state into the
+# image. In particular the container's data (SQLite DB + uploaded photos) must
+# live ONLY on the mounted /data volume — never inside the image — so it
+# survives a container upgrade.
+
+# Regenerated inside the image (bun install / bun run build)
+node_modules
+dist
+
+# Local dev database — must NOT be baked in (would shadow the /data volume with
+# a throwaway copy that is wiped on every image rebuild).
+*.db
+*.db-journal
+*.db-wal
+prisma/*.db
+
+# Local secrets/config — the container gets its env from compose/`docker run`,
+# not from a baked-in .env.
+.env
+.env.local
+.env.*.local
+
+# VCS & tooling artifacts, not needed at runtime
+.git
+.gitignore
+.github
+.vscode
+.playwright-mcp
+coverage

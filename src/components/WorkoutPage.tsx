@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import useSWR from "swr";
 import { ProgramCard } from "./ProgramCard";
+import { SyncPanel } from "./SyncPanel";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
@@ -11,9 +12,9 @@ export function WorkoutPage() {
 	const navigate = useNavigate();
 	const { data: programs = [] } = useSWR<Program[]>("/api/programs");
 
-	if (programs.length === 0) {
-		return (
-			<div className="flex-1 p-4">
+	return (
+		<div className="flex-1 p-4">
+			{programs.length === 0 ? (
 				<div className="text-center py-16">
 					<div className="mx-auto w-24 h-24 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mb-6">
 						<Dumbbell className="h-12 w-12 text-white" />
@@ -34,33 +35,31 @@ export function WorkoutPage() {
 						Create Programs
 					</Button>
 				</div>
-			</div>
-		);
-	}
+			) : (
+				<div className="grid gap-4">
+					{programs.map((program) => (
+						<Suspense
+							key={program.id}
+							fallback={
+								<Card>
+									<CardHeader>
+										<CardTitle>{program.name}</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<Button className="w-full" disabled>
+											Loading...
+										</Button>
+									</CardContent>
+								</Card>
+							}
+						>
+							<ProgramCard program={program} />
+						</Suspense>
+					))}
+				</div>
+			)}
 
-	return (
-		<div className="flex-1 p-4">
-			<div className="grid gap-4">
-				{programs.map((program) => (
-					<Suspense
-						key={program.id}
-						fallback={
-							<Card>
-								<CardHeader>
-									<CardTitle>{program.name}</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<Button className="w-full" disabled>
-										Loading...
-									</Button>
-								</CardContent>
-							</Card>
-						}
-					>
-						<ProgramCard program={program} />
-					</Suspense>
-				))}
-			</div>
+			<SyncPanel />
 		</div>
 	);
 }

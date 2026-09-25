@@ -55,6 +55,14 @@ export interface QueuedMutation {
 /** A single persisted SWR cache entry: the request key and its last data. */
 export type CacheEntry = [string, { data: unknown }];
 
+/** One line in the user-visible sync activity log. */
+export interface SyncLogEntry {
+	/** Epoch ms when the entry was recorded. */
+	time: number;
+	level: "info" | "success" | "error";
+	message: string;
+}
+
 /** Snapshot of the sync engine consumed by the UI via useSyncExternalStore. */
 export interface SyncState {
 	/** `navigator.onLine`: whether the device has network connectivity at all. */
@@ -69,4 +77,10 @@ export interface SyncState {
 	serverReachable: boolean;
 	/** Number of mutations still waiting to be flushed. */
 	pending: number;
+	/** True while a flush is actively in flight. */
+	syncing: boolean;
+	/** Epoch ms of the last time the queue fully drained, or null if never. */
+	lastSyncAt: number | null;
+	/** Recent sync activity (oldest → newest), a bounded ring buffer for the UI. */
+	log: SyncLogEntry[];
 }

@@ -18,7 +18,12 @@
  */
 
 import { mutate as globalMutate } from "swr";
-import type { MutationMethod, QueuedMutation, SyncState } from "../types";
+import type {
+	MutationMethod,
+	QueuedMutation,
+	SyncLogEntry,
+	SyncState,
+} from "../types";
 import {
 	dequeueMutation,
 	enqueueMutation,
@@ -73,7 +78,14 @@ let state: SyncState = {
 	// a healthy boot.
 	serverReachable: true,
 	pending: 0,
+	syncing: false,
+	lastSyncAt: null,
+	log: [],
 };
+
+// Cap the log so a long-running session (or a retry loop) can't grow it without
+// bound; the UI only ever shows the tail anyway.
+const MAX_LOG = 50;
 
 const listeners = new Set<() => void>();
 
@@ -82,12 +94,31 @@ function emit(next: Partial<SyncState>) {
 	if (
 		merged.online === state.online &&
 		merged.serverReachable === state.serverReachable &&
-		merged.pending === state.pending
+		merged.pending === state.pending &&
+		merged.syncing === state.syncing &&
+		merged.lastSyncAt === state.lastSyncAt &&
+		merged.log === state.log
 	) {
 		return;
 	}
 	state = merged;
 	for (const cb of listeners) cb();
+}
+
+/**
+ * Append a line to the sync log (new array so `emit` notifies) and, for errors,
+ * mirror it to the console. This is the visibility that turns a silent, forever
+ * "Syncing…" into something the user can actually diagnose.
+ */
+function pushLog(level: SyncLogEntry["level"], message: string) {
+	const entry: SyncLogEntry = { time: Date.now(), level, message };
+	if (level === "error") console.error("[sync]", message);
+	emit({ log: [...state.log, entry].slice(-MAX_LOG) });
+}
+
+/** Human label for a queued mutation in the log: just method + path (no query). */
+function describeMutation(item: QueuedMutation): string {
+	return `${item.method} ${item.url.split("?")[0]}`;
 }
 
 /**
@@ -183,6 +214,7 @@ export async function apiMutate<T = unknown>(
 
 	const mutation: QueuedMutation = { url, method, body, createdAt: Date.now() };
 	await enqueueMutation(mutation);
+	pushLog("info", `Queued ${describeMutation(mutation)}`);
 	await refreshPending();
 	// Kick a flush (non-blocking) so the backoff-retry chain gets armed. Without
 	// this, a write queued while the app stays online (server unreachable) would
@@ -249,11 +281,19 @@ async function revalidateAll() {
 export async function flushQueue(): Promise<void> {
 	if (flushing || (isBrowser && !navigator.onLine)) return;
 	flushing = true;
+	emit({ syncing: true });
 	let flushedAny = false;
 	try {
 		const items = await readQueue();
+		if (items.length > 0) {
+			pushLog(
+				"info",
+				`Syncing ${items.length} change${items.length === 1 ? "" : "s"}…`,
+			);
+		}
 		for (const item of items) {
 			if (item.key === undefined) continue;
+			const label = describeMutation(item);
 			try {
 				const res = await fetch(item.url, {
 					method: item.method,
@@ -267,18 +307,40 @@ export async function flushQueue(): Promise<void> {
 				if (shouldDropAfterReplay(res.status)) {
 					await dequeueMutation(item.key);
 					flushedAny = true;
+					if (res.ok) {
+						pushLog("success", `${label} ✓`);
+					} else {
+						// A 4xx can never succeed on retry, so we drop it — but that
+						// silently discards a user's change, so it must be surfaced.
+						pushLog(
+							"error",
+							`${label} → HTTP ${res.status}; discarded (won't retry)`,
+						);
+					}
 				} else {
-					break; // transient server error — retry on the next flush
+					// 5xx: the server answered but failed. Keep the item and stop; this
+					// is the head-of-line block behind an endless "Syncing…".
+					pushLog("error", `${label} → HTTP ${res.status}; will retry`);
+					break;
 				}
 			} catch {
 				reportServerUnreachable();
+				pushLog("error", `${label} failed — server unreachable; will retry`);
 				break; // network dropped mid-flush — retry later
 			}
 		}
 	} finally {
 		flushing = false;
 		const pending = await queueCount();
-		emit({ pending });
+		const drained = pending === 0;
+		emit({
+			pending,
+			syncing: false,
+			...(drained && flushedAny ? { lastSyncAt: Date.now() } : {}),
+		});
+		if (drained && flushedAny) {
+			pushLog("success", "All changes synced");
+		}
 		if (flushedAny) {
 			await revalidateAll();
 		}
@@ -289,6 +351,39 @@ export async function flushQueue(): Promise<void> {
 			scheduleRetry();
 		} else {
 			clearRetry();
+		}
+	}
+}
+
+/**
+ * User-initiated sync. Resets any pending backoff so it runs now (not in up to
+ * 5 minutes), flushes the queue, and — even when the queue is already empty —
+ * revalidates all SWR data so the button doubles as a manual "refresh". All
+ * outcomes land in the log.
+ */
+export async function syncNow(): Promise<void> {
+	if (!isBrowser) return;
+	if (!navigator.onLine) {
+		pushLog("error", "Can't sync — this device is offline");
+		return;
+	}
+	clearRetry();
+	pushLog("info", "Manual sync started");
+	const hadQueue = (await queueCount()) > 0;
+	await flushQueue();
+	// flushQueue only revalidates when it flushed something; with an empty queue
+	// (or a fully-drained one) still pull fresh server state so the manual button
+	// always refreshes the UI.
+	if (!hadQueue && navigator.onLine) {
+		emit({ syncing: true });
+		try {
+			await revalidateAll();
+			emit({ lastSyncAt: Date.now() });
+			pushLog("success", "Up to date");
+		} catch {
+			pushLog("error", "Refresh failed — server unreachable");
+		} finally {
+			emit({ syncing: false });
 		}
 	}
 }

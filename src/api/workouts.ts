@@ -25,6 +25,23 @@ export const workoutsRoutes = {
 			const userId = getCurrentUserId(req);
 			const { id, programId, startTime } = await req.json();
 
+			// Validate up front and return 400 (not a thrown 500) for bad input: a
+			// queued offline write with a missing/invalid field can never succeed, so
+			// it must be *dropped* by the sync engine (4xx), not retried forever (5xx).
+			if (typeof programId !== "string" || !programId) {
+				return Response.json(
+					{ error: "programId is required" },
+					{ status: 400 },
+				);
+			}
+			const start = new Date(startTime);
+			if (Number.isNaN(start.getTime())) {
+				return Response.json(
+					{ error: "a valid startTime is required" },
+					{ status: 400 },
+				);
+			}
+
 			// Verify program belongs to user
 			const program = await prisma.program.findFirst({
 				where: { id: programId, userId },
@@ -37,7 +54,6 @@ export const workoutsRoutes = {
 			const workoutId =
 				id ??
 				`workout_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-			const start = new Date(startTime);
 
 			// Guard against a client id that belongs to another user before we
 			// upsert (upsert can only key on the unique id, not scope by userId).

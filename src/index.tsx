@@ -51,6 +51,20 @@ const server = serve({
 		// Echo console logs from the browser to the server
 		console: true,
 	},
+
+	// A thrown value from any route handler lands here. Auth/validation guards
+	// (e.g. `getCurrentUserId`) `throw new Response(..., { status: 401 })` to
+	// short-circuit — but Bun does NOT auto-return a thrown Response, so without
+	// this handler it collapses to a generic 500 (plus the 66KB dev HTML page).
+	// That matters for offline sync: `shouldDropAfterReplay` retries a 5xx
+	// forever but drops a 4xx, so a mis-reported 401→500 turns a re-login-needed
+	// request into a poison item that jams the whole FIFO queue. Return thrown
+	// Responses verbatim; collapse everything else to a clean JSON 500.
+	error(error) {
+		if (error instanceof Response) return error;
+		console.error("[server] unhandled route error:", error);
+		return Response.json({ error: "Internal server error" }, { status: 500 });
+	},
 });
 
 console.log(`🚀 Server running at ${server.url}`);
